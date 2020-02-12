@@ -1,0 +1,14 @@
+2/12
+See; https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
+See: https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
+
+See: https://github.com/onnx/models#image_classification
+for layers, note MobileNet and ShuffleNet
+
+for a good way to use CNNs on images as features and then pass
+to the OC-SVM for training, prediction
+
+The issue is that we don't really understand the feature space, depending on
+the CNN, we have these texture basises, not sure how to manipulate or explain that
+
+Could have to students learn the basis? Would be easier if it was better grounded
