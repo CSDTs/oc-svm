@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 import click
 import os
@@ -48,9 +47,7 @@ def convert_image_to_features(overwrite_any_existing, input_filepath, output_fil
         )
 
 
-main.add_command(makeinterim)
-main.add_command(tsfeatures)
-
+main.add_command(convert_image_to_features)
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
