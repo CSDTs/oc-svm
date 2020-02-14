@@ -12,3 +12,17 @@ The issue is that we don't really understand the feature space, depending on
 the CNN, we have these texture basises, not sure how to manipulate or explain that
 
 Could have to students learn the basis? Would be easier if it was better grounded
+--
+
+2/14
+See Skorch for working in pytorch
+https://skorch.readthedocs.io/en/stable/user/installation.html
+
+So there's something of a slight decision point,
+The first hackernoon reference shows an end to end way to train on OC SVM with CNN features,
+using Keras. But I've been advised to use PyTorch. I also want to get results ASAP.
+There is also a deep OC features approach, here: https://github.com/PramuPerera/DeepOneClass
+it uses Caffe though.
+
+Okay so I think I should just reproduce the tutorial above and then swap in my dataaset and
+report on results, set up an API somewhere
