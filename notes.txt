@@ -38,4 +38,35 @@ scrolling up in the current command
 note that tensorflow has no support for GPUs on macs (not NVIDIA) :___(
     this means if i run this elsewhere I should make sure I'm using the GPU'ed tensorflow
     or run w/in a Google colab
+--
+I'm starting to think that if i want to have results in hand before 5pm I might be
+better off just busting this out in ipython, save the output and port to a the cookie cutter
+reproducibale format later.
+--
+k, let's try it ...
 
+okay I get
+(oc-svm) bash-3.2$ python extract_features.py 
+Using TensorFlow backend.
+[INFO] loading network...
+2020-02-18 15:14:22.733788: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2020-02-18 15:14:22.796471: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x7fc9ebc3c6c0 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2020-02-18 15:14:22.796496: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+/Users/kwamepr/.local/share/virtualenvs/oc-svm-EfKF6l7S/lib/python3.7/site-packages/keras_applications/resnet50.py:265: UserWarning: The output shape of `ResNet50(include_top=False)` has been changed since Keras 2.2.0.
+  warnings.warn('The output shape of `ResNet50(include_top=False)` '
+Downloading data from https://github.com/fchollet/deep-learning-models/releases/download/v0.2/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5
+94658560/94653016 [==============================] - 4s 0us/step
+
+but note
+```
+The output of the max-pooling layer has a volume shape of 7 x 7 x 512 which we flatten into a feature vector of 21,055-dim.
+```
+which suggests that I should do pool=max
+see:
+https://github.com/keras-team/keras-applications/blob/master/keras_applications/resnet50.py#L256-L266
+pool = 'max'
+
+we should see a 7 x 7 512 matrix, flatted into a 21,055 dim feature vector
+(for one image!?)
+--
+anyway, let's re-run with this

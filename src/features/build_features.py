@@ -73,7 +73,6 @@ def make_resnet50_features(overwrite_any_existing, input_filepath, output_filepa
         image_data = read_image(str(input_filepath))
 
 
-
     image_h = image_data[0].shape[0]
     image_w = image_data[0].shape[1]
     image_depth = image_data[0].shape[2]

@@ -14,6 +14,7 @@ requests = "*"
 click = "*"
 tensorflow = "*"
 keras = "*"
+opencv-python = "*"
 
 [requires]
 python_version = "3.7"
