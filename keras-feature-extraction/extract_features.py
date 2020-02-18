@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # load the ResNet50 network and initialize the label encoder
 print("[INFO] loading network...")
-model = ResNet50(weights="imagenet", pooling='max', include_top=False)
+model = ResNet50(weights="imagenet", include_top=False)
 le = None
 
 # loop over the data splits

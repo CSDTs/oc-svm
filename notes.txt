@@ -83,5 +83,15 @@ say what now???
 -rw-r--r--  1 kwamepr  staff    0 Feb 18 15:26 output/training.csv
 -rw-r--r--  1 kwamepr  staff    0 Feb 18 15:26 output/validation.csv
 ---
+note: https://cv-tricks.com/keras/understand-implement-resnets/
+see the data generater shear, zoom , flip tricks
 
+okay, so from the above there a couple of things to try:
+a) Theyuse an avg pool, the write up from the code says a max pool but
+maybe that was a typo?
+b) Use no pool and see what happens, the pooling will change the shape.
 
+I'll start w b since both writeups don't specify a pooling. Note this will
+trigger the warning
+-
+I'll be, it's running
