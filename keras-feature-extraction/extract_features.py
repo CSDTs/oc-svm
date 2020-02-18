@@ -13,7 +13,10 @@ from pathlib import Path
 import numpy as np
 import pickle
 import random
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 # load the ResNet50 network and initialize the label encoder
 print("[INFO] loading network...")
@@ -26,12 +29,13 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	print("[INFO] processing '{} split'...".format(split))
 	p = os.path.sep.join([config.BASE_PATH, split])
 	#imagePaths = list(paths.list_images(p))
-	imagePaths = list(Path(p).glob("*.jpg"))
+	imagePaths = list(Path(p).glob("*/*.jpg"))
 
+	print("[INFO] ... number of images in path {} ...".format(len(imagePaths)))
 	# randomly shuffle the image paths and then extract the class
 	# labels from the file paths
 	random.shuffle(imagePaths)
-	labels = [p.split(os.path.sep)[-2] for p in imagePaths]
+	labels = [str(p).split(os.path.sep)[-2] for p in imagePaths]
 
 	# if the label encoder is None, create it
 	if le is None:

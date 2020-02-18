@@ -69,4 +69,19 @@ pool = 'max'
 we should see a 7 x 7 512 matrix, flatted into a 21,055 dim feature vector
 (for one image!?)
 --
-anyway, let's re-run with this
+anyway, let's re-run with this 
+works
+-
+say what now???
+
+(oc-svm) bash-3.2$ ls -l output/validation.csv 
+-rw-r--r--  1 kwamepr  staff  0 Feb 18 15:26 output/validation.csv
+--
+(oc-svm) bash-3.2$ ls -l output/*
+-rw-r--r--  1 kwamepr  staff    0 Feb 18 15:26 output/evaluation.csv
+-rw-r--r--  1 kwamepr  staff  261 Feb 18 15:26 output/le.cpickle
+-rw-r--r--  1 kwamepr  staff    0 Feb 18 15:26 output/training.csv
+-rw-r--r--  1 kwamepr  staff    0 Feb 18 15:26 output/validation.csv
+---
+
+

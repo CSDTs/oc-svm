@@ -8,6 +8,7 @@ from keras.optimizers import SGD
 from keras.utils import to_categorical
 from sklearn.metrics import classification_report
 from pyimagesearch import config
+import pandas as pd
 import numpy as np
 import pickle
 import os
@@ -67,8 +68,12 @@ testPath = os.path.sep.join([config.BASE_CSV_PATH,
 
 # determine the total number of images in the training and validation
 # sets
+# totalTrain = sum([1 for l in open(trainPath)])
+# totalVal = sum([1 for l in open(valPath)])
 totalTrain = sum([1 for l in open(trainPath)])
 totalVal = sum([1 for l in open(valPath)])
+
+
 
 # extract the testing labels from the CSV file and then determine the
 # number of testing images
@@ -83,6 +88,7 @@ valGen = csv_feature_generator(valPath, config.BATCH_SIZE,
 testGen = csv_feature_generator(testPath, config.BATCH_SIZE,
 	len(config.CLASSES), mode="eval")
 
+## Note this is where we would drop in our OneClass SVM
 # define our simple neural network
 model = Sequential()
 model.add(Dense(256, input_shape=(7 * 7 * 2048,), activation="relu"))

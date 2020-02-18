@@ -15,6 +15,7 @@ click = "*"
 tensorflow = "*"
 keras = "*"
 opencv-python = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.7"
