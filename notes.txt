@@ -26,3 +26,16 @@ it uses Caffe though.
 
 Okay so I think I should just reproduce the tutorial above and then swap in my dataaset and
 report on results, set up an API somewhere
+--
+2/18
+
+Okay, so what I'll do here is reproduce https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
+within this cookie cutter data science frame work
+
+note, vscode hot tip, fn+shift  on  mac in ipython will recall the previously entered command w/o 
+scrolling up in the current command
+-
+note that tensorflow has no support for GPUs on macs (not NVIDIA) :___(
+    this means if i run this elsewhere I should make sure I'm using the GPU'ed tensorflow
+    or run w/in a Google colab
+

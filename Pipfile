@@ -10,6 +10,10 @@ ipython = "*"
 sklearn = "*"
 pandas = "*"
 numpy = "*"
+requests = "*"
+click = "*"
+tensorflow = "*"
+keras = "*"
 
 [requires]
 python_version = "3.7"
