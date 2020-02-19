@@ -74,7 +74,6 @@ totalTrain = sum([1 for l in open(trainPath)])
 totalVal = sum([1 for l in open(valPath)])
 
 
-
 # extract the testing labels from the CSV file and then determine the
 # number of testing images
 testLabels = [int(row.split(",")[0]) for row in open(testPath)]
@@ -89,32 +88,76 @@ testGen = csv_feature_generator(testPath, config.BATCH_SIZE,
 	len(config.CLASSES), mode="eval")
 
 ## Note this is where we would drop in our OneClass SVM
-# define our simple neural network
-model = Sequential()
-model.add(Dense(256, input_shape=(7 * 7 * 2048,), activation="relu"))
-model.add(Dense(16, activation="relu"))
-model.add(Dense(len(config.CLASSES), activation="softmax"))
 
-# compile the model
-opt = SGD(lr=1e-3, momentum=0.9, decay=1e-3 / 25)
-model.compile(loss="binary_crossentropy", optimizer=opt,
-	metrics=["accuracy"])
+if config.MODEL == 'SGD':
+	# define our simple neural network
+	model = Sequential()
+	model.add(Dense(256, input_shape=(7 * 7 * 2048,), activation="relu"))
+	model.add(Dense(16, activation="relu"))
+	model.add(Dense(len(config.CLASSES), activation="softmax"))
 
-# train the network
-print("[INFO] training simple network...")
-H = model.fit_generator(
-	trainGen,
-	steps_per_epoch=totalTrain // config.BATCH_SIZE,
-	validation_data=valGen,
-	validation_steps=totalVal // config.BATCH_SIZE,
-	epochs=25)
+	# compile the model
+	opt = SGD(lr=1e-3, momentum=0.9, decay=1e-3 / 25)
+	model.compile(loss="binary_crossentropy", optimizer=opt,
+		metrics=["accuracy"])
 
-# make predictions on the testing images, finding the index of the
-# label with the corresponding largest predicted probability, then
-# show a nicely formatted classification report
-print("[INFO] evaluating network...")
-predIdxs = model.predict_generator(testGen,
-	steps=(totalTest //config.BATCH_SIZE) + 1)
-predIdxs = np.argmax(predIdxs, axis=1)
-print(classification_report(testLabels, predIdxs,
-	target_names=le.classes_))
+	# train the network
+	print("[INFO] training simple network...")
+	H = model.fit_generator(
+		trainGen,
+		steps_per_epoch=totalTrain // config.BATCH_SIZE,
+		validation_data=valGen,
+		validation_steps=totalVal // config.BATCH_SIZE,
+		epochs=25)
+
+	# make predictions on the testing images, finding the index of the
+	# label with the corresponding largest predicted probability, then
+	# show a nicely formatted classification report
+	print("[INFO] evaluating network...")
+	predIdxs = model.predict_generator(testGen,
+		steps=(totalTest //config.BATCH_SIZE) + 1)
+	predIdxs = np.argmax(predIdxs, axis=1)
+	print(classification_report(testLabels, predIdxs,
+		target_names=le.classes_))
+
+if config.MODEL == "one-class":
+	#see: https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
+	from sklearn.preprocessing import StandardScaler
+	from sklearn.decomposition import PCA
+	from sklearn.ensemble import IsolationForest
+	from sklearn import svm	
+
+	# get all of train, evaluation generator
+	X_train = ...
+	X_test = ...
+	#  scale it (that's what they did)
+	ss = StandardScaler()
+	ss.fit(X_train)
+	X_train = ss.transform(X_train)
+	X_test = ss.transform(X_test)
+
+	# PCA it (that's what they did)
+	pca = PCA(n_components=512, whiten=True)
+	pca = pca.fit(X_train)
+	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
+	X_train = pca.transform(X_train)
+	X_test = pca.transform(X_test)
+
+	# Train classifier and obtain predictions for OC-SVM
+	oc_svm_clf = svm.OneClassSVM(gamma=0.001, kernel='rbf', nu=0.08)  # Obtained using grid search
+	if_clf = IsolationForest(contamination=0.08, max_features=1.0, max_samples=1.0, n_estimators=40)  # Obtained using grid search
+
+	oc_svm_clf.fit(X_train)
+	if_clf.fit(X_train)
+
+	oc_svm_preds = oc_svm_clf.predict(X_test)
+	if_preds = if_clf.predict(X_test)	
+
+	# prediction, with classification report
+	print("One Class SVM...")
+	print(classification_report(testLabels, oc_svm_preds,
+		target_names=le.classes_))
+
+	print("Isolation Forest ...")
+	print(classification_report(testLabels, if_preds,
+		target_names=le.classes_))

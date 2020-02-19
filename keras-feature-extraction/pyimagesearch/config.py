@@ -28,3 +28,7 @@ BATCH_SIZE = 32
 # where the extracted features (in CSV file format) will be stored
 LE_PATH = os.path.sep.join(["output", "le.kente.cpickle"])
 BASE_CSV_PATH = "output"
+
+
+# Set the model to use
+MODEL = "one-class"
