@@ -29,10 +29,13 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	print("[INFO] processing '{} split'...".format(split))
 	p = os.path.sep.join([config.BASE_PATH, split])
 	#imagePaths = list(paths.list_images(p))
-	imagePaths = list(Path(p).glob("*/*.jpg"))
+	#imagePaths = list(Path(p).glob("*/*.jpg")) # for 5k
+	imagePaths = list(Path(p).glob("*.jpg")) # for Kente
 
 	print("[INFO] ... number of images in path {} ...".format(len(imagePaths)))
 	# randomly shuffle the image paths and then extract the class
+	print("[INFO] ... path is {} ...".format(p))
+
 	# labels from the file paths
 	random.shuffle(imagePaths)
 	labels = [str(p).split(os.path.sep)[-2] for p in imagePaths]

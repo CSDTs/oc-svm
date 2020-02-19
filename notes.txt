@@ -95,3 +95,22 @@ I'll start w b since both writeups don't specify a pooling. Note this will
 trigger the warning
 -
 I'll be, it's running
+---
+great got the following in the 5k replication
+
+93/93 [==============================] - 120s 1s/step - loss: 2.9558e-05 - accuracy: 1.0000 - val_loss: 1.9939e-05 - val_accuracy: 0.9876
+[INFO] evaluating network...
+              precision    recall  f1-score   support
+
+        food       0.99      0.98      0.99       500
+    non_food       0.98      0.99      0.99       500
+
+    accuracy                           0.99      1000
+   macro avg       0.99      0.99      0.99      1000
+weighted avg       0.99      0.99      0.99      1000
+---
+notice that classification metric is the same but the last epoch isn't as good
+---
+Now I need to
+a) Figure out how to move training/test examples 
+b) Figure out how to partially train a one class svm (I think?)
