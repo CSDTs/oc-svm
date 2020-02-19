@@ -38,12 +38,18 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 
 	# labels from the file paths
 	random.shuffle(imagePaths)
-	labels = [str(p).split(os.path.sep)[-2] for p in imagePaths]
+	#labels = [str(p).split(os.path.sep)[-2] for p in imagePaths]
+	#  for Kente we need to look back one unit
+	#labels = [str(p).split(os.path.sep)[-1] for p in imagePaths]	
+	labels = [p.name.split('_',1)[0] for p in imagePaths]
 
 	# if the label encoder is None, create it
 	if le is None:
 		le = LabelEncoder()
-		le.fit(labels)
+		# le.fit(labels)
+		#  the above assumes all label types are present but
+		# in training they aren't
+		le.fit(['fake','real'])
 
 	# open the output CSV file for writing
 	csvPath = os.path.sep.join([config.BASE_CSV_PATH,
@@ -57,8 +63,8 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		# for feature extraction
 		print("[INFO] processing batch {}/{}".format(b + 1,
 			int(np.ceil(len(imagePaths) / float(config.BATCH_SIZE)))))
-		batchPaths = imagePaths[i:i + config.BATCH_SIZE]
-		batchLabels = le.transform(labels[i:i + config.BATCH_SIZE])
+		batchPaths = imagePaths[i: i + config.BATCH_SIZE]
+		batchLabels = le.transform(labels[i: i + config.BATCH_SIZE])
 		batchImages = []
 
 		# loop over the images and labels in the current batch
