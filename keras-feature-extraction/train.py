@@ -79,6 +79,8 @@ totalVal = sum([1 for l in open(valPath)])
 testLabels = [int(row.split(",")[0]) for row in open(testPath)]
 totalTest = len(testLabels)
 
+print("[INFO] setting up generators for train, test and validation  ...")
+print(f"[INFO] ... train from {trainPath}")
 # construct the training, validation, and testing generators
 trainGen = csv_feature_generator(trainPath, config.BATCH_SIZE,
 	len(config.CLASSES), mode="train")
@@ -86,10 +88,11 @@ valGen = csv_feature_generator(valPath, config.BATCH_SIZE,
 	len(config.CLASSES), mode="eval")
 testGen = csv_feature_generator(testPath, config.BATCH_SIZE,
 	len(config.CLASSES), mode="eval")
+print("[INFO] ... setup train, test and validation generators!")
 
-## Note this is where we would drop in our OneClass SVM
 
 if config.MODEL == 'SGD':
+	number_of_epochs = 3
 	# define our simple neural network
 	model = Sequential()
 	model.add(Dense(256, input_shape=(7 * 7 * 2048,), activation="relu"))
@@ -108,7 +111,7 @@ if config.MODEL == 'SGD':
 		steps_per_epoch=totalTrain // config.BATCH_SIZE,
 		validation_data=valGen,
 		validation_steps=totalVal // config.BATCH_SIZE,
-		epochs=25)
+		epochs=number_of_epochs)
 
 	# make predictions on the testing images, finding the index of the
 	# label with the corresponding largest predicted probability, then
@@ -128,8 +131,11 @@ if config.MODEL == "one-class":
 	from sklearn import svm	
 
 	# get all of train, evaluation generator
-	X_train = ...
-	X_test = ...
+	X_train = np.concatenate(
+		np.array(trainGen),
+		np.array(valGen)
+	)
+	X_test = np.array(testGen)
 	#  scale it (that's what they did)
 	ss = StandardScaler()
 	ss.fit(X_train)

@@ -16,6 +16,10 @@ tensorflow = "*"
 keras = "*"
 opencv-python = "*"
 pillow = "*"
+dask = {extras = ["dataframe"],version = "*"}
+update = "*"
+cloudpickle = "*"
+distributed = "*"
 
 [requires]
 python_version = "3.7"

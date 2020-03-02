@@ -15,6 +15,7 @@ import pickle
 import random
 import logging
 import os
+import pdb
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ model = ResNet50(weights="imagenet", include_top=False)
 le = None
 
 # loop over the data splits
-for split in (config.TRAIN, config.TEST, config.VAL):
+for split in (config.TEST, config.VAL, config.TRAIN):
 	# grab all image paths in the current split
 	print("[INFO] processing '{} split'...".format(split))
 	p = os.path.sep.join([config.BASE_PATH, split])
@@ -39,9 +40,9 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	# labels from the file paths
 	random.shuffle(imagePaths)
 	#labels = [str(p).split(os.path.sep)[-2] for p in imagePaths]
-	#  for Kente we need to look back one unit
-	#labels = [str(p).split(os.path.sep)[-1] for p in imagePaths]	
+	#  for Kente we need to do things slightly differently
 	labels = [p.name.split('_',1)[0] for p in imagePaths]
+
 
 	# if the label encoder is None, create it
 	if le is None:
@@ -54,7 +55,12 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	# open the output CSV file for writing
 	csvPath = os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.csv".format(split)])
-	csv = open(csvPath, "w")
+	npPath = os.path.sep.join([config.BASE_CSV_PATH,
+		"{}.npy".format(split)])
+	if config.EXTRACT_FEATURES_TO_CSV:
+		csv = open(csvPath, "w")
+	if config.EXTRACT_FEATURES_TO_NPY:
+		npy = open(npPath, "ab")
 
 	# loop over the images in batches
 	for (b, i) in enumerate(range(0, len(imagePaths), config.BATCH_SIZE)):
@@ -63,9 +69,11 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		# for feature extraction
 		print("[INFO] processing batch {}/{}".format(b + 1,
 			int(np.ceil(len(imagePaths) / float(config.BATCH_SIZE)))))
+		print("[INFO] label encoding from path ...")
 		batchPaths = imagePaths[i: i + config.BATCH_SIZE]
 		batchLabels = le.transform(labels[i: i + config.BATCH_SIZE])
 		batchImages = []
+		print("[INFO] ... label encoded!")
 
 		# loop over the images and labels in the current batch
 		for imagePath in batchPaths:
@@ -86,19 +94,43 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		# pass the images through the network and use the outputs as
 		# our actual features, then reshape the features into a
 		# flattened volume
+		print("[INFO] generating features ... ")
 		batchImages = np.vstack(batchImages)
 		features = model.predict(batchImages, batch_size=config.BATCH_SIZE)
 		features = features.reshape((features.shape[0], 7 * 7 * 2048))
+		print("[INFO] ... generated features")
 
-		# loop over the class labels and extracted features
-		for (label, vec) in zip(batchLabels, features):
-			# construct a row that exists of the class label and
-			# extracted features
-			vec = ",".join([str(v) for v in vec])
-			csv.write("{},{}\n".format(label, vec))
+		if config.EXTRACT_FEATURES_TO_NPY:
+			# add vector to feature file for faster read
+			print("[INFO] extracting features to NPY ...")
+			labels_by_column =\
+				np.array(
+					[0 if label == 'fake' else 1 for 
+						label in labels[i: i + config.BATCH_SIZE]],
+					ndmin= 2
+				)
 
-	# close the CSV file
-	csv.close()
+			np.save(npy,
+					 np.concatenate(
+					 	(labels_by_column.T,
+						 features),
+					 axis=1)
+			)
+			print("[INFO] ... saved features!")
+
+		if config.EXTRACT_FEATURES_TO_CSV:
+			# loop over the class labels and extracted features
+			for (label, vec) in zip(batchLabels, features):
+				# construct a row that exists of the class label and
+				# extracted features
+				vec = ",".join([str(v) for v in vec])
+				csv.write("{},{}\n".format(label, vec))
+
+	# close the CSV, numpy file
+	if config.EXTRACT_FEATURES_TO_CSV:	
+		csv.close()
+	if config.EXTRACT_FEATURES_TO_NPY:
+		npy.close()
 
 # serialize the label encoder to disk
 f = open(config.LE_PATH, "wb")

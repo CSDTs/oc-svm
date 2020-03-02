@@ -20,6 +20,8 @@ VAL = "validation"
 # CLASSES = ["non_food", "food"]
 CLASSES = ["fake", "real"]
 
+EXTRACT_FEATURES_TO_NPY=True
+EXTRACT_FEATURES_TO_CSV=False
 
 # set the batch size
 BATCH_SIZE = 32
@@ -32,3 +34,4 @@ BASE_CSV_PATH = "output"
 
 # Set the model to use
 MODEL = "one-class"
+#MODEL = "SGD"

@@ -114,3 +114,56 @@ notice that classification metric is the same but the last epoch isn't as good
 Now I need to
 a) Figure out how to move training/test examples 
 b) Figure out how to partially train a one class svm (I think?)
+----
+Okay, for SGD, I got
+
+Epoch 3/3
+78/78 [==============================] - 107s 1s/step - loss: 0.0000e+00 - accuracy: 1.0000 - val_loss: 3.8343 - val_accuracy: 0.7232
+[INFO] evaluating network...
+/Users/kwamepr/.local/share/virtualenvs/oc-svm-EfKF6l7S/lib/python3.7/site-packages/sklearn/metrics/_classification.py:1272: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       188
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       688
+   macro avg       0.36      0.50      0.42       688
+weighted avg       0.53      0.73      0.61       688
+---
+Which is really bad it seems, although it must be predicting some things are fake because 
+it gets .73 on the real images, so I'm not sure. But it thinks all fake
+images are real which ... isn't good.
+---
+
+Anyway, I'm trying to load any of the data and it's taking a looooooong time.
+Eval is       327 mb 
+training is   1g
+validation is 325 mb
+
+it looks like csv_feature_generator is doign something slightly unique,
+maybe I should just workw with that instead of pandas; the nueral network 
+does start training easily so it does load the data fine.
+
+also, the generator will re-read data to fill up to the batch size,
+wihch is really bad
+---
+
+see; https://stackoverflow.com/questions/40100176/can-dask-parralelize-reading-fom-a-csv-file
+for loading dataframes in parallel with Dask,
+ the followign works pretty quickly (~ 1 min for training data)
+```
+from dask.distributed import progress
+from dask.distributed import Client
+from dask import dd
+client = Client()
+
+df_dask = dd.read_csv(trainPath, sep=',', dtype=float, sample=int(2*256e3), blocksize="512MB")
+df = progress(df_dask.compute(scheduler='processes'))
+```
+
+Rosebrock has a tutorial on deep learning anomaly detection 
+here: https://www.pyimagesearch.com/2020/03/02/anomaly-detection-with-keras-tensorflow-and-deep-learning/
+that uses autoencoder, autoencoder error as an anomaly dectector.
+-
+
