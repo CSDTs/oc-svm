@@ -11,6 +11,7 @@ from pyimagesearch import config
 #from imutils import paths
 from pathlib import Path
 import numpy as np
+import zarr
 import pickle
 import random
 import logging
@@ -55,12 +56,19 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	# open the output CSV file for writing
 	csvPath = os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.csv".format(split)])
-	npPath = os.path.sep.join([config.BASE_CSV_PATH,
+	npPath = Path(
+		os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.npy".format(split)])
+		)
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 	if config.EXTRACT_FEATURES_TO_NPY:
-		npy = open(npPath, "ab")
+		#  if already exists we wipe
+		if npPath.exists():
+			npPath.unlink()
+			print("[INFO] ... deleted old extracted data")
+		#npy = open(str(npPath), "ab")
+		npy = zarr.open(str(npPath), mode="w")
 
 	# loop over the images in batches
 	for (b, i) in enumerate(range(0, len(imagePaths), config.BATCH_SIZE)):
@@ -109,12 +117,11 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 						label in labels[i: i + config.BATCH_SIZE]],
 					ndmin= 2
 				)
-
-			np.save(npy,
-					 np.concatenate(
-					 	(labels_by_column.T,
-						 features),
-					 axis=1)
+			npy.save(
+				np.concatenate(
+					(labels_by_column.T,
+					  features),
+					axis=1)
 			)
 			print("[INFO] ... saved features!")
 
@@ -129,8 +136,6 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	# close the CSV, numpy file
 	if config.EXTRACT_FEATURES_TO_CSV:	
 		csv.close()
-	if config.EXTRACT_FEATURES_TO_NPY:
-		npy.close()
 
 # serialize the label encoder to disk
 f = open(config.LE_PATH, "wb")
