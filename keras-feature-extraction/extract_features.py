@@ -63,12 +63,7 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 	if config.EXTRACT_FEATURES_TO_NPY:
-		#  if already exists we wipe
-		if npPath.exists():
-			npPath.unlink()
-			print("[INFO] ... deleted old extracted data")
-		#npy = open(str(npPath), "ab")
-		npy = zarr.open(str(npPath), mode="w")
+		zarr.open(str(npPath), mode="w") # overwrite
 
 	# loop over the images in batches
 	for (b, i) in enumerate(range(0, len(imagePaths), config.BATCH_SIZE)):
@@ -117,7 +112,8 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 						label in labels[i: i + config.BATCH_SIZE]],
 					ndmin= 2
 				)
-			npy.save(
+			zarr.save(
+				str(npPath),
 				np.concatenate(
 					(labels_by_column.T,
 					  features),
