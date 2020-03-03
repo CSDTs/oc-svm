@@ -58,12 +58,13 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 		"{}.csv".format(split)])
 	npPath = Path(
 		os.path.sep.join([config.BASE_CSV_PATH,
-		"{}.npy".format(split)])
+		"{}.zip".format(split)])
 		)
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 	if config.EXTRACT_FEATURES_TO_NPY:
-		zarr.open(str(npPath), mode="w") # overwrite
+		with zarr.ZipStore(str(npPath), mode="w") as _:
+			pass
 
 	# loop over the images in batches
 	for (b, i) in enumerate(range(0, len(imagePaths), config.BATCH_SIZE)):
@@ -112,13 +113,24 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 						label in labels[i: i + config.BATCH_SIZE]],
 					ndmin= 2
 				)
-			zarr.save(
-				str(npPath),
-				np.concatenate(
-					(labels_by_column.T,
-					  features),
-					axis=1)
-			)
+			# this throws an error on iteration three, not sure why
+			# 	well it's tryint to delete a key fro some reason
+			# 	maybe specify the key?, would need to give the group a name
+			#
+			# This is kinda taking up too much time
+			# the other alternative is to pre allocate an array
+			# write to that and then write it all to disk
+			# 
+			# we need to read everythin ginto memeroy anyway for training.
+			with zarr.ZipStore(str(npPath), mode="a") as store:
+				zarr.save_group(
+					store,
+					np.concatenate(
+						(labels_by_column.T, features),
+						axis=1
+					),
+					overwrite=False
+				)
 			print("[INFO] ... saved features!")
 
 		if config.EXTRACT_FEATURES_TO_CSV:
@@ -132,6 +144,9 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	# close the CSV, numpy file
 	if config.EXTRACT_FEATURES_TO_CSV:	
 		csv.close()
+	
+	print("SHUTTING DOWN FOR A TEST")
+	break
 
 # serialize the label encoder to disk
 f = open(config.LE_PATH, "wb")
