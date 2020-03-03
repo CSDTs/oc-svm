@@ -166,4 +166,11 @@ Rosebrock has a tutorial on deep learning anomaly detection
 here: https://www.pyimagesearch.com/2020/03/02/anomaly-detection-with-keras-tensorflow-and-deep-learning/
 that uses autoencoder, autoencoder error as an anomaly dectector.
 -
+Okay, loading into an numpy array directly was wayyyyyyy easier
+defintely a score for KISS. It's tough though because sustainability requires
+good code design and eliminating code debt but research coding isn't really
+meant to go outside of the basic proof of concept :(
 
+I think I'm good, going to reorder the paths and start w the training data first
+then run. From here I should be able to push the entire array, seperate out the labels,
+into a one class classifier after pca'ing

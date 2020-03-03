@@ -20,7 +20,6 @@ dask = {extras = ["dataframe"],version = "*"}
 update = "*"
 cloudpickle = "*"
 distributed = "*"
-zarr = "*"
 
 [requires]
 python_version = "3.7"

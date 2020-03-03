@@ -11,7 +11,6 @@ from pyimagesearch import config
 #from imutils import paths
 from pathlib import Path
 import numpy as np
-import zarr
 import pickle
 import random
 import logging
@@ -23,10 +22,11 @@ logger = logging.getLogger(__name__)
 # load the ResNet50 network and initialize the label encoder
 print("[INFO] loading network...")
 model = ResNet50(weights="imagenet", include_top=False)
+flattened_size = 7 * 7 * 2048
 le = None
 
 # loop over the data splits
-for split in (config.TEST, config.VAL, config.TRAIN):
+for split in (config.TRAIN, config.TEST, config.VAL):
 	# grab all image paths in the current split
 	print("[INFO] processing '{} split'...".format(split))
 	p = os.path.sep.join([config.BASE_PATH, split])
@@ -44,7 +44,6 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	#  for Kente we need to do things slightly differently
 	labels = [p.name.split('_',1)[0] for p in imagePaths]
 
-
 	# if the label encoder is None, create it
 	if le is None:
 		le = LabelEncoder()
@@ -58,13 +57,20 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 		"{}.csv".format(split)])
 	npPath = Path(
 		os.path.sep.join([config.BASE_CSV_PATH,
-		"{}.zip".format(split)])
+		"{}.npy".format(split)])
 		)
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 	if config.EXTRACT_FEATURES_TO_NPY:
-		with zarr.ZipStore(str(npPath), mode="w") as _:
-			pass
+		if npPath.exists():
+			print(f"[INFO] ... deleting old data for {split}")
+			npPath.unlink()
+		feature_array = np.zeros(
+			(
+				len(labels),
+				flattened_size + 1
+			)  # +1 for labels
+		)
 
 	# loop over the images in batches
 	for (b, i) in enumerate(range(0, len(imagePaths), config.BATCH_SIZE)):
@@ -101,7 +107,7 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 		print("[INFO] generating features ... ")
 		batchImages = np.vstack(batchImages)
 		features = model.predict(batchImages, batch_size=config.BATCH_SIZE)
-		features = features.reshape((features.shape[0], 7 * 7 * 2048))
+		features = features.reshape((features.shape[0], flattened_size))
 		print("[INFO] ... generated features")
 
 		if config.EXTRACT_FEATURES_TO_NPY:
@@ -113,24 +119,15 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 						label in labels[i: i + config.BATCH_SIZE]],
 					ndmin= 2
 				)
-			# this throws an error on iteration three, not sure why
-			# 	well it's tryint to delete a key fro some reason
-			# 	maybe specify the key?, would need to give the group a name
-			#
-			# This is kinda taking up too much time
-			# the other alternative is to pre allocate an array
-			# write to that and then write it all to disk
-			# 
-			# we need to read everythin ginto memeroy anyway for training.
-			with zarr.ZipStore(str(npPath), mode="a") as store:
-				zarr.save_group(
-					store,
+
+			feature_array[
+				i : i + config.BATCH_SIZE,
+				: ] =\
 					np.concatenate(
 						(labels_by_column.T, features),
 						axis=1
-					),
-					overwrite=False
-				)
+					)
+
 			print("[INFO] ... saved features!")
 
 		if config.EXTRACT_FEATURES_TO_CSV:
@@ -145,8 +142,10 @@ for split in (config.TEST, config.VAL, config.TRAIN):
 	if config.EXTRACT_FEATURES_TO_CSV:	
 		csv.close()
 	
-	print("SHUTTING DOWN FOR A TEST")
-	break
+	# write out the full feature array
+	if config.EXTRACT_FEATURES_TO_NPY:	
+		np.save(npPath, feature_array)
+
 
 # serialize the label encoder to disk
 f = open(config.LE_PATH, "wb")
