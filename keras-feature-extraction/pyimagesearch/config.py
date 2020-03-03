@@ -16,6 +16,8 @@ TRAIN = "training"
 TEST = "evaluation"
 VAL = "validation"
 
+LABEL_INDEX = 0
+
 # initialize the list of class label names
 # CLASSES = ["non_food", "food"]
 CLASSES = ["fake", "real"]
@@ -33,5 +35,5 @@ BASE_CSV_PATH = "output"
 
 
 # Set the model to use
-MODEL = "one-class"
+MODEL = "ONECLASS"
 #MODEL = "SGD"

@@ -66,32 +66,31 @@ valPath = os.path.sep.join([config.BASE_CSV_PATH,
 testPath = os.path.sep.join([config.BASE_CSV_PATH,
 	"{}.csv".format(config.TEST)])
 
-# determine the total number of images in the training and validation
-# sets
-# totalTrain = sum([1 for l in open(trainPath)])
-# totalVal = sum([1 for l in open(valPath)])
-totalTrain = sum([1 for l in open(trainPath)])
-totalVal = sum([1 for l in open(valPath)])
-
-
-# extract the testing labels from the CSV file and then determine the
-# number of testing images
-testLabels = [int(row.split(",")[0]) for row in open(testPath)]
-totalTest = len(testLabels)
-
-print("[INFO] setting up generators for train, test and validation  ...")
-print(f"[INFO] ... train from {trainPath}")
-# construct the training, validation, and testing generators
-trainGen = csv_feature_generator(trainPath, config.BATCH_SIZE,
-	len(config.CLASSES), mode="train")
-valGen = csv_feature_generator(valPath, config.BATCH_SIZE,
-	len(config.CLASSES), mode="eval")
-testGen = csv_feature_generator(testPath, config.BATCH_SIZE,
-	len(config.CLASSES), mode="eval")
-print("[INFO] ... setup train, test and validation generators!")
-
-
 if config.MODEL == 'SGD':
+	# determine the total number of images in the training and validation
+	# sets
+	# totalTrain = sum([1 for l in open(trainPath)])
+	# totalVal = sum([1 for l in open(valPath)])
+	totalTrain = sum([1 for l in open(trainPath)])
+	totalVal = sum([1 for l in open(valPath)])
+
+
+	# extract the testing labels from the CSV file and then determine the
+	# number of testing images
+	testLabels = [int(row.split(",")[0]) for row in open(testPath)]
+	totalTest = len(testLabels)
+
+	print("[INFO] setting up generators for train, test and validation  ...")
+	print(f"[INFO] ... train from {trainPath}")
+	# construct the training, validation, and testing generators
+	trainGen = csv_feature_generator(trainPath, config.BATCH_SIZE,
+		len(config.CLASSES), mode="train")
+	valGen = csv_feature_generator(valPath, config.BATCH_SIZE,
+		len(config.CLASSES), mode="eval")
+	testGen = csv_feature_generator(testPath, config.BATCH_SIZE,
+		len(config.CLASSES), mode="eval")
+	print("[INFO] ... setup train, test and validation generators!")
+
 	number_of_epochs = 3
 	# define our simple neural network
 	model = Sequential()
@@ -123,47 +122,74 @@ if config.MODEL == 'SGD':
 	print(classification_report(testLabels, predIdxs,
 		target_names=le.classes_))
 
-if config.MODEL == "one-class":
+if config.MODEL == "ONECLASS":
 	#see: https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
 	from sklearn.preprocessing import StandardScaler
 	from sklearn.decomposition import PCA
 	from sklearn.ensemble import IsolationForest
-	from sklearn import svm	
+	from sklearn import svm
 
+	def data_load(data_set, base_path=config.BASE_CSV_PATH):
+		data = np.load(
+			os.path.sep.join(
+				[base_path,
+				f"{data_set}.npy"]
+			)
+		)
+		return data[:, config.LABEL_INDEX+1:],\
+			data[:, config.LABEL_INDEX]
+
+	print("[INFO] Loading train, validation and test into memory ...")
 	# get all of train, evaluation generator
-	X_train = np.concatenate(
-		np.array(trainGen),
-		np.array(valGen)
-	)
-	X_test = np.array(testGen)
-	#  scale it (that's what they did)
+	X_train, y_train = data_load(data_set=config.TRAIN)
+
+	X_val, y_val = data_load(data_set=config.VAL)
+
+	X_test, y_val = data_load(data_set=config.TEST)
+	print("[INFO] ... loaded into memory")
+
+	print("[INFO] Applying standard scaling ...")
 	ss = StandardScaler()
 	ss.fit(X_train)
 	X_train = ss.transform(X_train)
+	X_val = ss.transform(X_val)
 	X_test = ss.transform(X_test)
+	print("[INFO] ... scaled")
 
 	# PCA it (that's what they did)
+	print("[INFO] Applying PCA ...")	
 	pca = PCA(n_components=512, whiten=True)
 	pca = pca.fit(X_train)
 	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
 	X_train = pca.transform(X_train)
+	X_val = pca.transform(X_val)
 	X_test = pca.transform(X_test)
+	print("[INFO] ... transformed")
 
+
+	print("[INFO] training OC-SVM, Isolation Forest ...")
 	# Train classifier and obtain predictions for OC-SVM
 	oc_svm_clf = svm.OneClassSVM(gamma=0.001, kernel='rbf', nu=0.08)  # Obtained using grid search
 	if_clf = IsolationForest(contamination=0.08, max_features=1.0, max_samples=1.0, n_estimators=40)  # Obtained using grid search
+	print("[INFO] ... trained")
 
+	print("[INFO] fitting OC-SVM, Isolation Forest ...")
 	oc_svm_clf.fit(X_train)
 	if_clf.fit(X_train)
+	print("[INFO] ... fitted")
 
-	oc_svm_preds = oc_svm_clf.predict(X_test)
-	if_preds = if_clf.predict(X_test)	
+	print("[INFO] predicting on validation data ...")
+	oc_svm_preds = oc_svm_clf.predict(X_val)
+	if_preds = if_clf.predict(X_val)
 
+	print("[INFO] producing classification report ...")
 	# prediction, with classification report
 	print("One Class SVM...")
-	print(classification_report(testLabels, oc_svm_preds,
+	print(classification_report(y_val, oc_svm_preds,
 		target_names=le.classes_))
 
 	print("Isolation Forest ...")
-	print(classification_report(testLabels, if_preds,
+	print(classification_report(y_val, if_preds,
 		target_names=le.classes_))
+
+	print("[INFO] done!")

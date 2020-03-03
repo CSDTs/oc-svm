@@ -165,6 +165,10 @@ df = progress(df_dask.compute(scheduler='processes'))
 Rosebrock has a tutorial on deep learning anomaly detection 
 here: https://www.pyimagesearch.com/2020/03/02/anomaly-detection-with-keras-tensorflow-and-deep-learning/
 that uses autoencoder, autoencoder error as an anomaly dectector.
+
+The approach seems a bit messy, it assumes a known proportion of other class
+which kind of breaks the assumption of one class and I really wonder if reconstructoin error, as
+opposed to dimensional space is the right way to go about the problem
 -
 Okay, loading into an numpy array directly was wayyyyyyy easier
 defintely a score for KISS. It's tough though because sustainability requires
@@ -174,3 +178,4 @@ meant to go outside of the basic proof of concept :(
 I think I'm good, going to reorder the paths and start w the training data first
 then run. From here I should be able to push the entire array, seperate out the labels,
 into a one class classifier after pca'ing
+--
