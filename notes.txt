@@ -395,3 +395,8 @@ under small subsets this should be a fairly rapid search pipeline, from there
 i can throw differetn feature techniques (SSIM, isolated woven structures, etc), I'll start this
 if the pipeline isn't more helpful.
 ------
+okay so I'm running the grid search and it's pretty slow bu tI am assing
+F1 scores of .915. I'm not sure what the other components of the score are,
+like false positive, etc.
+
+Givcen the time the search is taking, this is not a rapid iteration pipeline, though.
