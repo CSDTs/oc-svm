@@ -11,6 +11,7 @@ from pyimagesearch import config
 #from imutils import paths
 from pathlib import Path
 import numpy as np
+import cv2
 import pickle
 import random
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 print("[INFO] loading network...")
 model = ResNet50(weights="imagenet", include_top=False)
 flattened_size = 7 * 7 * 2048
+hsv_flattened_size = 224 * 224 * 3
 le = None
 
 # loop over the data splits
@@ -59,6 +61,10 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.npy".format(split)])
 		)
+	npPathHSV = Path(
+		os.path.sep.join([config.BASE_CSV_PATH,
+		"{}.hsv.npy".format(split)])
+		)		
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 	if config.EXTRACT_FEATURES_TO_NPY:
@@ -69,6 +75,16 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 			(
 				len(labels),
 				flattened_size + 1
+			)  # +1 for labels
+		)
+	if config.EXTRACT_AS_HSV:
+		if npPathHSV.exists():
+			print(f"[INFO] ... deleting old hsv data for {split}")
+			npPathHSV.unlink()
+		feature_array = np.zeros(
+			(
+				len(labels),
+				hsv_flattened_size + 1
 			)  # +1 for labels
 		)
 
@@ -90,27 +106,39 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 			# load the input image using the Keras helper utility
 			# while ensuring the image is resized to 224x224 pixels
 			image = load_img(imagePath, target_size=(224, 224))
-			image = img_to_array(image)
+			if config.EXTRACT_IMAGE_NET_FEATURES:
+				print("[INFO] ... extracting image net features")
+				image = img_to_array(image)
 
-			# preprocess the image by (1) expanding the dimensions and
-			# (2) subtracting the mean RGB pixel intensity from the
-			# ImageNet dataset
-			image = np.expand_dims(image, axis=0)
-			image = imagenet_utils.preprocess_input(image)
+				# preprocess the image by (1) expanding the dimensions and
+				# (2) subtracting the mean RGB pixel intensity from the
+				# ImageNet dataset
+				image = np.expand_dims(image, axis=0)
+				image = imagenet_utils.preprocess_input(image)
+				# add the image to the batch
+				batchImages.append(image)
 
-			# add the image to the batch
-			batchImages.append(image)
+			if config.EXTRACT_AS_HSV:
+				print("[INFO] ... extracting as HSV")
+				image = img_to_array(image.convert('HSV'))
+				image = np.expand_dims(image, axis=0)
+				batchImages.append(image)
 
 		# pass the images through the network and use the outputs as
 		# our actual features, then reshape the features into a
 		# flattened volume
 		print("[INFO] generating features ... ")
 		batchImages = np.vstack(batchImages)
-		features = model.predict(batchImages, batch_size=config.BATCH_SIZE)
-		features = features.reshape((features.shape[0], flattened_size))
+
+		if config.EXTRACT_AS_HSV:
+			features = batchImages.reshape((batchImages.shape[0], hsv_flattened_size))
+
+		if config.EXTRACT_IMAGE_NET_FEATURES:
+			features = model.predict(batchImages, batch_size=config.BATCH_SIZE)
+			features = features.reshape((features.shape[0], flattened_size))
 		print("[INFO] ... generated features")
 
-		if config.EXTRACT_FEATURES_TO_NPY:
+		if config.EXTRACT_FEATURES_TO_NPY or config.EXTRACT_AS_HSV:
 			# add vector to feature file for faster read
 			print("[INFO] extracting features to NPY ...")
 			labels_by_column =\
@@ -143,9 +171,14 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		csv.close()
 	
 	# write out the full feature array
-	if config.EXTRACT_FEATURES_TO_NPY:	
+	if config.EXTRACT_FEATURES_TO_NPY:
 		np.save(npPath, feature_array)
 
+	if config.EXTRACT_AS_HSV:
+		np.save(npPathHSV, feature_array)
+
+	# print("Done with one class feature Extraction! Breaking!")
+	# break
 
 # serialize the label encoder to disk
 f = open(config.LE_PATH, "wb")

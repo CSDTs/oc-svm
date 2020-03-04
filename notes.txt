@@ -179,3 +179,219 @@ I think I'm good, going to reorder the paths and start w the training data first
 then run. From here I should be able to push the entire array, seperate out the labels,
 into a one class classifier after pca'ing
 --
+okay, so I'm getting ~~slightly better~~ exactly the same results from one class svm,
+
+ted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+Isolation Forest ...
+Traceback (most recent call last):
+  File "train.py", line 193, in <module>
+
+
+The isolation forest appears to be predicting 3 classes instead of 2 which is
+very odd and throws an error.  I put in code to count the number of
+unique predictiosn to veriy that we're not seeing all real (1) predictions,
+which should be the case since the real line has a precision of 0.73.
+I suspect, somehow, what is happening that any fake predictions are only
+happening when presented a real example. I should probably get an AUC score.
+
+I will run this in ipython, i want to debug the isolationforest but that's not
+really pressing now, hmm well , yeah I need to figure out the distirbution of
+predictions and then decide
+---
+I think the space of real and fake kente might be concentric, with fake being
+within real, for the image net feature set
+
+I think I need more texture and invariant luminance checks. Let me see if there is
+a auto-image feature generator
+---
+[INFO] class prediction counts {np.unique(oc_svm_preds, return_counts=True)}
+/Users/kwamepr/.local/share/virtualenvs/oc-svm-EfKF6l7S/lib/python3.7/site-packages/sklearn/metrics/_classification.py:1272: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+0.5
+Isolation Forest ...
+[INFO] class prediction counts {np.unique(if_preds, return_counts=True)}
+/Users/kwamepr/.local/share/virtualenvs/oc-svm-EfKF6l7S/lib/python3.7/site-packages/sklearn/metrics/_classification.py:1272: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+0.5
+[INFO] done!
+
+occured when running w/in ipython, not sure why I got a different result since
+nothign was changed.
+---
+see: https://gogul.dev/software/texture-recognition#what-is-a-texture
+for harlick feature, wonder if it runs over RGB space instead of just gray scale
+--
+ah interseting
+I just observed that the training folder has instances of fake kente cloth in it
+this means that those instances are folded into its notion of real kente, wihch is
+very much incorrect and could explain why all fake kente is preceived as real since
+the variation among our fake kente is smaller.
+
+Another thing I noticed or though about is that the grayscale space that imagenet and
+others operate in naturally removes color intensity, which is an important component of
+artisan work, perhaps evenmore so than Western art (this probably could be measured somehow)
+
+This recalls how original video cameras didn't provifde enough contrast for darker skinned folks,
+see: https://www.buzzfeednews.com/article/syreetamcfadden/teaching-the-camera-to-see-my-skin
+
+There is defintely a high tech analogy to emulsion range with the standardization of, say,
+image net, using grayscale, for image classification, where it performs less on 
+high contrast, dynamic imagery (including some kinds of art).
+Note: there is bias in imagenet, this is beign worked on
+---
+Okay, so we're getting a ROC AUC of 0.5 which is random guessing :( something
+doesn't quite add up because some of the real where predicted to be fake, so it can
+output a fake decision, just not very smartly.
+-------
+
+Okay, so, I really want to get this out of the way so I can enjoy my spring break,
+I need to get better accuracy on both cases.
+
+Doing a problem break down on this, i suspect
+
+see: https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
+
+for a nice write up of color spaces
+--
+see vtreat, application to unsupervised problems: https://github.com/WinVector/pyvtreat/blob/master/Examples/Unsupervised/Unsupervised.md
+--
+See this write up on whiteneing, http://ufldl.stanford.edu/tutorial/unsupervised/PCAWhitening/
+it's defintely for images though, but in this code base it's applied to
+imagenet likelihoods, which seems somewhat strange to me.
+----
+Okay, correcting the class labels fixed the isolation forest error, etc, but the AUC is the same
+
+[INFO] producing classification report ...
+One Class SVM...
+[INFO] class prediction counts (array([-1,  1]), array([  1, 686]))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+ROC AUC Score:  0.499
+Isolation Forest ...
+[INFO] class prediction counts (array([-1,  1]), array([  1, 686]))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+ROC AUC Score:  0.499
+----
+
+okay, so I got it to output hsv features only (it's a lot faster to do so)
+now i need to train and predict against. I'm also pretty much on my 
+last problem breakdown approach.
+
+
+okay ....
+given
+```
+bins = np.linspace(30, 60, 100)
+my_x = oc_svm_clf.score_samples(X_val)
+plt.hist(my_x[y_val==-1], bins, alpha=0.5, label='-1')
+plt.hist(my_x[y_val==1], bins, alpha=0.5, label='1')
+plt.legend(loc='upper right')
+```
+
+okay, looking at the historgram we defintely see some kind of seperation
+it's disjoint across the score_samples domain but it's there.
+I'm re-running with image net features to see if it's any better seperated
+-
+it's basically the same with a lot more overhead
+
+ROC AUC Score:  0.5
+Isolation Forest ...
+[INFO] class prediction counts (array([1]), array([687]))
+/Users/kwamepr/.local/share/virtualenvs/oc-svm-EfKF6l7S/lib/python3.7/site-packages/sklearn/metrics/_classification.py:1272: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, msg_start, len(result))
+              precision    recall  f1-score   support
+
+        fake       0.00      0.00      0.00       187
+        real       0.73      1.00      0.84       500
+
+    accuracy                           0.73       687
+   macro avg       0.36      0.50      0.42       687
+weighted avg       0.53      0.73      0.61       687
+
+ROC AUC Score:  0.5
+[INFO] done!
+---
+
+So it's pretty clear that the images and/or feature space is at issue.
+
+I do think there is something subtle about the self consistency, tiled repeated shapes,
+fractal dimension of. 
+
+see: https://www.codementor.io/@mathiasgatti/the-beauty-formula-identifying-interesting-patterns-automatically-based-on-aesthetic-metrics-basic-clustering-example-with-scikit-learn-xka5d6do8
+--
+okay imagenet is either the same or slightly worse; the left tail isn't as good.
+
+--
+okay so this is what I think I should do:
+a) consider applying fractical dimension with an entropy measure (don't need to divide gif/tiff size)
+b) threshold the svm output (or something) to get a better AUC, F1 score 
+or
+c) use a one class sgd? but throw in one fake instance so it can handle fake isntances as a class
+fill in paper with the above.
+
+I do recognize from this that this representation presents a challenging problem
+and that better features are probably needed.
+----
+3/4
+
+okay, I don't really want to drop more time into this, esp this week, beyond
+today, so what i'll do is update my problem 
+--
+back, okay, took the morning to analyze the problem and I came up with 3 or 4 things
+to consider. Aside from that, also, I broke this down into a rapid iteration pipeline
+which i should've done to being with but I assumed the classifier was more robust than it was.
+-
+So what I'm going to do is
+a) From https://sdsawtelle.github.io/blog/output/week9-anomaly-andrew-ng-machine-learning-with-python.html, 
+set up a grid search framework that uses subset of training data (positive only)
+b) The grid search will use the F1 score, as recommended, against a subset of the validation data set, which
+includes negative cases.
+c) I will also use their 3d visualization, which is just nice to look at.
+
+under small subsets this should be a fairly rapid search pipeline, from there
+i can throw differetn feature techniques (SSIM, isolated woven structures, etc), I'll start this
+if the pipeline isn't more helpful.
+------

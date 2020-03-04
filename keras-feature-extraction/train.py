@@ -6,12 +6,68 @@ from keras.models import Sequential
 from keras.layers.core import Dense
 from keras.optimizers import SGD
 from keras.utils import to_categorical
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, roc_auc_score
 from pyimagesearch import config
 import pandas as pd
 import numpy as np
 import pickle
 import os
+
+# Packages for gridsearch, examining results
+from sklearn.decompositax.set_zlabel("x_composite_3")ion import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from mpl_toolkits.mplot3d import Axes3D  # for visualization
+import seaborn as sns  # for pretty plot
+sns.set_style("white")
+
+
+def get_visualization_pipeline():
+	pipeline =\
+		Pipeline([('standard_scaler', StandardScaler()),
+			 	  ('pca', PCA(n_components=3, random_state=42))]
+		)
+	return pipeline
+
+def visualize_data(X, y):
+	my_dpi=96
+	plt.figure(figsize=(480/my_dpi, 480/my_dpi), dpi=my_dpi)
+
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	ax.set_zlabel("x_composite_3")
+	sc =\
+		ax.scatter(X[:, 0],
+				   X[:, 1],
+				   X[:, 2],
+				   c=y,  # color by outlier or inlier
+				   cmap="Set2_r",
+				   s=60,
+				   alpha=0.25,
+				   )
+
+	labels = np.unique(y)
+	print("labels are: ", labels)
+	handles = [plt.Line2D([],[], marker="o", ls="", 
+						color=sc.cmap(sc.norm(yi))) for yi in labels]
+	plt.legend(handles, labels)
+
+	# make simple, bare axis lines through space:
+	xAxisLine = ((min(X[:, 0]), max(X[:, 0])), (0, 0), (0,0))
+	ax.plot(xAxisLine[0], xAxisLine[1], xAxisLine[2], 'r')
+	yAxisLine = ((0, 0), (min(X[:, 1]), max(X[:, 1])), (0,0))
+	ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
+	zAxisLine = ((0, 0), (0,0), (min(X[:, 2]), max(X[:, 2])))
+	ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
+	
+	# label the axes
+	ax.set_xlabel("PC1")
+	ax.set_ylabel("PC2")
+	ax.set_zlabel("PC3")
+	ax.set_title("Kente Cloth Inliers and Outliers")
+	plt.show()
+
+
 
 def csv_feature_generator(inputPath, bs, numClasses, mode="train"):
 	# open the input file for reading
@@ -129,23 +185,52 @@ if config.MODEL == "ONECLASS":
 	from sklearn.ensemble import IsolationForest
 	from sklearn import svm
 
-	def data_load(data_set, base_path=config.BASE_CSV_PATH):
+	def load_data(data_set,
+				  base_path=config.BASE_CSV_PATH,
+				  remap_y_values={0:-1},
+				  use_hsv=True,
+				  subset=True):
+		hsv = ''
+		if use_hsv:
+			hsv = 'hsv.'
 		data = np.load(
 			os.path.sep.join(
 				[base_path,
-				f"{data_set}.npy"]
+				 f"{data_set}.{hsv}npy"]
 			)
 		)
-		return data[:, config.LABEL_INDEX+1:],\
-			data[:, config.LABEL_INDEX]
+
+		X, y =\
+			data[:, config.LABEL_INDEX+1:],\
+				data[:, config.LABEL_INDEX]
+
+		if remap_y_values:
+			y =\
+				np.array(
+					[remap_y_values.get(value, value) for value in y]
+			)
+
+		if subset:
+			X, y = subset_data(X, y)
+
+		return X, y
+
+	def subset_data(X, y, fraction=config.PROPORTION_TRAIN_CASES):
+		indices = np.random\
+					.randint(X.shape[0],
+							 size=int(X.shape[0]*fraction))
+		return X[indices], y[indices]
+
+
+
 
 	print("[INFO] Loading train, validation and test into memory ...")
 	# get all of train, evaluation generator
-	X_train, y_train = data_load(data_set=config.TRAIN)
+	X_train, y_train = load_data(data_set=config.TRAIN, subset=True)
 
-	X_val, y_val = data_load(data_set=config.VAL)
+	X_val, y_val = load_data(data_set=config.VAL)
 
-	X_test, y_val = data_load(data_set=config.TEST)
+	X_test, y_test = load_data(data_set=config.TEST)
 	print("[INFO] ... loaded into memory")
 
 	print("[INFO] Applying standard scaling ...")
@@ -163,9 +248,8 @@ if config.MODEL == "ONECLASS":
 	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
 	X_train = pca.transform(X_train)
 	X_val = pca.transform(X_val)
-	X_test = pca.transform(X_test)
-	print("[INFO] ... transformed")
-
+	#X_test = pca.transform(X_test)
+	print(f"[INFO] ... transformed train shape: {X_train.shape}, val shape: {X_val.shape}")
 
 	print("[INFO] training OC-SVM, Isolation Forest ...")
 	# Train classifier and obtain predictions for OC-SVM
@@ -181,15 +265,19 @@ if config.MODEL == "ONECLASS":
 	print("[INFO] predicting on validation data ...")
 	oc_svm_preds = oc_svm_clf.predict(X_val)
 	if_preds = if_clf.predict(X_val)
+	print(f"[INFO] ... predicted oc_svm shape: {oc_svm_preds.shape}")
 
 	print("[INFO] producing classification report ...")
 	# prediction, with classification report
 	print("One Class SVM...")
+	print(f"[INFO] class prediction counts {np.unique(oc_svm_preds, return_counts=True)}")
 	print(classification_report(y_val, oc_svm_preds,
-		target_names=le.classes_))
+		target_names=['fake', 'real']))
+	print("ROC AUC Score: ", roc_auc_score(y_val, oc_svm_preds))
 
 	print("Isolation Forest ...")
+	print(f"[INFO] class prediction counts {np.unique(if_preds, return_counts=True)}")	
 	print(classification_report(y_val, if_preds,
-		target_names=le.classes_))
-
+		target_names=['fake', 'real']))
+	print("ROC AUC Score: ", roc_auc_score(y_val, if_preds))
 	print("[INFO] done!")

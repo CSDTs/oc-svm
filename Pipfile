@@ -20,6 +20,9 @@ dask = {extras = ["dataframe"],version = "*"}
 update = "*"
 cloudpickle = "*"
 distributed = "*"
+matplotlib = "*"
+seaborn = "*"
+statsmodels = "*"
 
 [requires]
 python_version = "3.7"

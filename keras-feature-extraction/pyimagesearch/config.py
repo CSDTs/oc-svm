@@ -12,7 +12,8 @@ BASE_PATH = "../../kente-cloth-authentication/data/processed"
 
 # define the names of the training, testing, and validation
 # directories
-TRAIN = "training"
+# TRAIN = "training"
+TRAIN = "oc_training"
 TEST = "evaluation"
 VAL = "validation"
 
@@ -25,6 +26,10 @@ CLASSES = ["fake", "real"]
 EXTRACT_FEATURES_TO_NPY=True
 EXTRACT_FEATURES_TO_CSV=False
 
+EXTRACT_AS_HSV=True
+EXTRACT_IMAGE_NET_FEATURES=False
+
+
 # set the batch size
 BATCH_SIZE = 32
 
@@ -33,7 +38,8 @@ BATCH_SIZE = 32
 LE_PATH = os.path.sep.join(["output", "le.kente.cpickle"])
 BASE_CSV_PATH = "output"
 
-
 # Set the model to use
 MODEL = "ONECLASS"
 #MODEL = "SGD"
+
+PROPORTION_TRAIN_CASES = 0.2
