@@ -29,13 +29,27 @@ def get_visualization_pipeline():
 		)
 	return pipeline
 
-def visualize_data(X, y):
+def visualize_data(X, y, pred_y=None):
 	my_dpi=96
 	plt.figure(figsize=(480/my_dpi, 480/my_dpi), dpi=my_dpi)
 
 	fig = plt.figure()
 	ax = fig.add_subplot(111, projection='3d')
 	ax.set_zlabel("x_composite_3")
+
+	if pred_y:
+		# Plot circles around the predicted outliers
+		ax.scatter(X[y_pred == -1, 0],
+				   X[ypred  == -1, 1],
+				   zs=X[y_pred== -1, 2], 
+				   lw=2,
+				   facecolors="none",
+				   edgecolors="r",
+				   s=80,
+				   label="predicted outlier")
+		#  labeled outliers with red circles are correct predictions
+		#  inliers with red circles are incorrect
+
 	sc =\
 		ax.scatter(X[:, 0],
 				   X[:, 1],
@@ -67,6 +81,20 @@ def visualize_data(X, y):
 	ax.set_title("Kente Cloth Inliers and Outliers")
 	plt.show()
 
+	if pred_y:
+
+
+	# seperately plot the pair wise histogram
+	sns.pairplot(
+		pd.DataFrame({
+			"x":X[:,0],
+			"y":X[:,1],
+			"z":X[:,2], 
+			"label":y}),
+		hue="label",
+		corner=True,
+		diag_kind='kde'
+	)  # todo: set same colors as prior plot
 
 
 def csv_feature_generator(inputPath, bs, numClasses, mode="train"):
