@@ -2,6 +2,7 @@
 # python train.py
 
 # import the necessary packages
+from functools import partial
 from keras.models import Sequential
 from keras.layers.core import Dense
 from keras.optimizers import SGD
@@ -219,7 +220,7 @@ if config.MODEL == "ONECLASS":
 	from sklearn.preprocessing import StandardScaler
 	from sklearn.decomposition import PCA, KernelPCA
 	from sklearn.ensemble import IsolationForest
-	from sklearn import svm
+	from sklearn.svm import OneClassSVM
 
 	def load_data(data_set,
 				  base_path=config.BASE_CSV_PATH,
@@ -300,26 +301,38 @@ if config.MODEL == "ONECLASS":
 	y_train_and_val = np.hstack((y_train, 
 								 y_val[:val_cuttoff])) # truncated at val_cuttoff
 
-
 	f1_scorer = make_scorer(f1_score)
+	# I think 'micro' implements recomendation of Aples to Apples in CV studies
+
 	contamination = {"contamination": list(np.linspace(0, 0.10, 2))+['auto']}
 	number_estimators = {"n_estimators": np.linspace(3, 20, num=3, dtype=int)}
 	max_features = {"max_features": np.linspace(0.1, 1.0, 3)}
-	parameter_grid = {**contamination,
-					  **number_estimators,
-					  **max_features,
-					  "n_jobs":[-1],
-					  "random_state":[42]}
+	kernel = {"kernel":["linear", "rbf", "poly", "sigmoid"]}
+	degree  = {"degree": np.linspace(2, 10, num=3, dtype=int)}
+	nu = {"nu": np.linspace(0.01, 1.0, 4)}
+	gamma = {"gamma":['auto', 1/512.0]}  #
+	
 	folds = StratifiedKFold(n_splits=3).split(X_train_and_val, y_train_and_val)
 
+	parameter_grid = {#**contamination,
+					  #**number_estimators,
+					  #**max_features,
+					  #"n_jobs":[-1],
+					  **kernel,
+					  **degree,
+					  **nu,
+					  **gamma}
+					  ##"random_state":[42]}
+
 	search = GridSearchCV(
-		estimator=IsolationForest(),
+		estimator=OneClassSVM(),
 		param_grid=parameter_grid,
-		scoring=f1_scorer,
+		scoring='balanced_accuracy',
 		cv=folds,
 		verbose=10,
 		n_jobs=-1)
-	search.fit(X_train_and_val, y_train_and_val)
+	# search.fit(X_train_and_val, y_train_and_val)
+	search.fit(X_train_k, y_train)
 
 	optimal_forest = search.best_estimator_
 
@@ -330,9 +343,27 @@ if config.MODEL == "ONECLASS":
 	y_val_test_with = y_train_and_val[val_cuttoff:]  # truncated AFTER val_cuttoff
 
 	preds = optimal_forest.predict(X_val_test_with)
+	print(classification_report(y_val_test_with, preds))
+
 	visualize_data(X_val_test_with,
 			       y_val_test_with,
 				   preds)
+
+	# ------
+	# special loop for OC svm
+	from sklearn.model_selection import ParameterGrid
+
+	for a_set_of_parameters in ParameterGrid(parameter_grid):
+		clf = OneClassSVM(**a_set_of_parameters)
+		clf.fit(X_train_k)
+		preds = optimal_forest.predict(X_val_test_with)
+		print(classification_report(y_val_test_with, preds))
+		print(a_set_of_parameters)
+		print("\n")
+	
+
+	# ------
+
 
 	#  plot fit results against 
 
