@@ -400,3 +400,38 @@ F1 scores of .915. I'm not sure what the other components of the score are,
 like false positive, etc.
 
 Givcen the time the search is taking, this is not a rapid iteration pipeline, though.
+----
+
+Okay, i've been in the trenches and I've been out of mind, I think I'm ready to call it here:
+
+              precision    recall  f1-score   support
+
+        -1.0       0.13      0.54      0.20        26
+         1.0       0.97      0.80      0.88       479
+
+    accuracy                           0.78       505
+   macro avg       0.55      0.67      0.54       505
+weighted avg       0.93      0.78      0.84       505
+
+
+In [32]: optimal_forest                                                                                                                              
+Out[32]: 
+LocalOutlierFactor(algorithm='auto', contamination='auto', leaf_size=30,
+                   metric='correlation', metric_params=None, n_jobs=-1,
+                   n_neighbors=3, novelty=True, p=2)
+---
+The only other thing I can think of, beside figuring how to implement
+a floating weave symbol detector, is to change the scorer
+---
+[Parallel(n_jobs=-1)]: Done 414 out of 414 | elapsed:   22.1s finished
+              precision    recall  f1-score   support
+
+        -1.0       0.13      0.54      0.20        26
+         1.0       0.97      0.80      0.88       479
+
+    accuracy                           0.78       505
+   macro avg       0.55      0.67      0.54       505
+weighted avg       0.93      0.78      0.84       505
+
+
+using balanced_accuracy

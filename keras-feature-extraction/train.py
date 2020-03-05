@@ -221,6 +221,7 @@ if config.MODEL == "ONECLASS":
 	from sklearn.decomposition import PCA, KernelPCA
 	from sklearn.ensemble import IsolationForest
 	from sklearn.svm import OneClassSVM
+	from sklearn.neighbors import LocalOutlierFactor
 
 	def load_data(data_set,
 				  base_path=config.BASE_CSV_PATH,
@@ -281,7 +282,7 @@ if config.MODEL == "ONECLASS":
 	pca = pca.fit(X_train)
 	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
 
-	kpca = KernelPCA(n_jobs=-1, n_components=512)
+	kpca = KernelPCA(n_jobs=-1, n_components=256) #X_train is 505?
 	kpca = kpca.fit(X_train)
 
 	X_train_k = kpca.transform(X_train)
@@ -311,40 +312,54 @@ if config.MODEL == "ONECLASS":
 	degree  = {"degree": np.linspace(2, 10, num=3, dtype=int)}
 	nu = {"nu": np.linspace(0.01, 1.0, 4)}
 	gamma = {"gamma":['auto', 1/512.0]}  #
-	
-	folds = StratifiedKFold(n_splits=3).split(X_train_and_val, y_train_and_val)
+	n_neighbors = {"n_neighbors": np.linspace(1, 40, num=10, dtype=int)}
+	metric = {"metric":\
+		['cityblock', 'cosine', 'euclidean',
+		 'l1', 'l2', 'manhattan'] +\
+		['braycurtis', 'canberra', 'chebyshev',
+		 'correlation', 'dice', 'hamming', 
+		 'jaccard', 'kulsinski', 'mahalanobis',
+		 'minkowski', 'rogerstanimoto', 'russellrao',
+		 'seuclidean', 'sokalmichener', 'sokalsneath',
+		 'sqeuclidean', 'yule']}
+	novelty = {"novelty":[True]}
 
 	parameter_grid = {#**contamination,
 					  #**number_estimators,
 					  #**max_features,
-					  #"n_jobs":[-1],
-					  **kernel,
-					  **degree,
-					  **nu,
-					  **gamma}
+					  "n_jobs":[-1],
+					  ##**kernel,
+					  ##**degree,
+					  ##**nu,
+					  ##**gamma}
 					  ##"random_state":[42]}
-
+					  **n_neighbors,
+					  **metric,
+					  **novelty}
+ 
+	folds = StratifiedKFold(n_splits=3).split(X_train_and_val, y_train_and_val)
 	search = GridSearchCV(
-		estimator=OneClassSVM(),
+		estimator=LocalOutlierFactor(),
 		param_grid=parameter_grid,
 		scoring='balanced_accuracy',
 		cv=folds,
 		verbose=10,
 		n_jobs=-1)
-	# search.fit(X_train_and_val, y_train_and_val)
-	search.fit(X_train_k, y_train)
+	search.fit(X_train_and_val, y_train_and_val)
+	#search.fit(X_train_k, y_train)
 
 	optimal_forest = search.best_estimator_
 
-	#  Test out of sample...
 	X_val_test_with = X_train_and_val[val_cuttoff:]
-	X_val_plot_with = get_visualization_pipeline().fit_transform(
-		X_val_test_with)
 	y_val_test_with = y_train_and_val[val_cuttoff:]  # truncated AFTER val_cuttoff
 
 	preds = optimal_forest.predict(X_val_test_with)
+
 	print(classification_report(y_val_test_with, preds))
 
+	#  Test out of sample...
+	X_val_plot_with = get_visualization_pipeline().fit_transform(
+		X_val_test_with)
 	visualize_data(X_val_test_with,
 			       y_val_test_with,
 				   preds)
