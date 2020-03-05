@@ -460,10 +460,74 @@ AlexNet or somethign that was used in texture (AlexNet was)
   X Need to re-run everything, might as well use mobile net
     X k let's try this, re-run
 
+--
+     ...: ^Inca.fit(X_train, y_train) 
+     ...:                                                                                                                                            
+Finding principal components... done in 52.07s
+RUNNING THE L-BFGS-B CODE
+
+           * * *
+
+Machine precision = 2.220D-16
+ N =     32112640     M =           10
+ This problem is unconstrained.
+
+At X0         0 variables are exactly at the bounds
+[NeighborhoodComponentsAnalysis]
+[NeighborhoodComponentsAnalysis]  Iteration      Objective Value    Time(s)
+[NeighborhoodComponentsAnalysis] ------------------------------------------
+[NeighborhoodComponentsAnalysis]          1         2.698000e+03      11.90
+
+At iterate    0    f= -2.69800D+03    |proj g|=  1.37618D-06
+
+           * * *
+
+Tit   = total number of iterations
+Tnf   = total number of function evaluations
+Tnint = total number of segments explored during Cauchy searches
+Skip  = number of BFGS updates skipped
+Nact  = number of active bounds at final generalized Cauchy point
+Projg = norm of the final projected gradient
+F     = final function value
+
+           * * *
+
+   N    Tit     Tnf  Tnint  Skip  Nact     Projg        F
+*****      0      1      0     0     0   1.376D-06  -2.698D+03
+  F =  -2698.0000000005057     
+
+CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL            
+[NeighborhoodComponentsAnalysis] Training took    94.05s.
+--
+
 **I need to make a scree plot and pick the "knee", there should be one since images themselves
 are highly redunant
+I can also plot up to the first three dimension
+  First three dimensions show concetration 
+
 * Then I need to run my hyper parameter optizaiont, peep results,
 graph best on held out validation sample.
 
+
 * Then I need to run on test data, probably plot, generate results
 PR curve, ROC, etc.
+----
+In [21]:     pca1 = PCA(n_components=int(X_train.shape[1]*0.50), whiten=True).fit(X_train) 
+            print('Explained variance percentage = %0.2f' % sum(pca1.explained_variance_ratio_)) 
+Explained variance percentage = 0.85
+
+In [11]:     pca2 = PCA(n_components=int(X_train.shape[0]*0.25), whiten=True).fit(X_train)                                                           
+In [12]:     print('Explained variance percentage = %0.2f' % sum(pca2.explained_variance_ratio_))                                                    
+Explained variance percentage = 0.68
+
+In [13]:     pca3 = PCA(n_components=int(X_train.shape[0]*0.125), whiten=True).fit(X_train)                                                          
+In [14]:     print('Explained variance percentage = %0.2f' % sum(pca3.explained_variance_ratio_))                                                    
+Explained variance percentage = 0.53
+
+In [15]:     pca4 = PCA(n_components=int(X_train.shape[0]*0.05), whiten=True).fit(X_train)                                                           
+In [16]:     print('Explained variance percentage = %0.2f' % sum(pca4.explained_variance_ratio_))                                                    
+Explained variance percentage = 0.38
+
+In [21]: [int(X_train.shape[0]*prop) for prop in [0.5, 0.25, 0.125, 0.05]]                                                                           
+Out[21]: [1365, 682, 341, 136]
+^ dimensions

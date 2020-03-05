@@ -214,11 +214,11 @@ if config.MODEL == 'SGD':
 if config.MODEL == "ONECLASS":
 	#see: https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
 	#see: https://sdsawtelle.github.io/blog/output/week9-anomaly-andrew-ng-machine-learning-with-python.htmlfrom sklearn.model_selection import StratifiedKFold
-	from sklearn.model_selection import StratifiedKFold
+	from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 	from sklearn.model_selection import GridSearchCV
 	from sklearn.metrics import f1_score, recall_score, make_scorer
 	from sklearn.preprocessing import StandardScaler
-	from sklearn.decomposition import PCA, KernelPCA, 
+	from sklearn.decomposition import PCA, KernelPCA
 	from sklearn.ensemble import IsolationForest
 	from sklearn.svm import OneClassSVM
 	from sklearn.neighbors import LocalOutlierFactor, NeighborhoodComponentsAnalysis
@@ -268,14 +268,34 @@ if config.MODEL == "ONECLASS":
 	# So we do hyperparameter searching, still, on the training, validation set
 	# with validation hold out to double check. Then we'll look at test wiht the best one
 	# hopefullyit's all good.
-	X_train, y_train = load_data(data_set="training.two_class",
+	X_train, y_train = load_data(data_set="oc_training.mobile",
 							     use_hsv=False,
-								 subset=False)
+								 subset=False)  # note one class, need to steal from val
 
-	X_val, y_val = load_data(data_set=config.VAL)
+	X_val, y_val = load_data(data_set="validation.mobile",
+							 use_hsv=False,
+							 subset=False)
 
-	X_test, y_test = load_data(data_set=config.TEST)
+	X_test, y_test = load_data(data_set="evaluation.mobile",
+							   use_hsv=False,
+							   subset=False)
 	print("[INFO] ... loaded into memory")
+
+	# ... X_train was designed to be one class only because I thought I was going to do
+	# an SVM approach but that turned out to be to big of an assumption.
+	# so, now need to mix X_val and X_train to get a balance of counterfiet and authentic examples
+
+	X_train_and_val = np.row_stack((X_train, X_val))
+	y_train_and_val = np.hstack((y_train, y_val))
+	stratified_splitter =\
+		StratifiedShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
+	new_train_index, new_test_index =\
+		list(stratified_splitter.split(X_train_and_val, y_train_and_val))[0]
+	X_train = X_train_and_val[new_train_index]
+	y_train = y_train_and_val[new_train_index]
+
+	X_val = X_train_and_val[new_test_index]
+	y_val = y_train_and_val[new_test_index]
 
 	print("[INFO] Applying standard scaling ...")
 	ss = StandardScaler()
@@ -286,21 +306,53 @@ if config.MODEL == "ONECLASS":
 	print("[INFO] ... scaled")
 
 	# # PCA it (that's what they did)
-	# print("[INFO] Applying PCA ...")	
-	# pca = PCA(n_components=512, whiten=True)
-	# pca = pca.fit(X_train)
-	# print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
-
+	# print("[INFO] Applying PCA ...")
 	# kpca = KernelPCA(n_jobs=-1, n_components=256) #X_train is 505?
 	# kpca = kpca.fit(X_train)
 
 	#  DO NCA instead
 	#   Note that this is y aware, so the parameter eval should 
-	nca = NeighborhoodComponentsAnalysis(n_components=512, verbose=10)
-	nca.fit(X_train, y_train)
+
+	# thebelow is taking too long, maybe just switch to PCA
+	#----
+	nca1 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.5), verbose=10)
+	nca1.fit(X_train, y_train)
+
+	nca2 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.25), verbose=10)
+	nca2.fit(X_train, y_train)
+
+	nca3 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.10, verbose=10)
+	nca3.fit(X_train, y_train)
+
+	nca4 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.05), verbose=10)
+	nca4.fit(X_train, y_train)
+
+	nca4 = NeighborhoodComponentsAnalysis(n_components=3, verbose=10)
+	nca4.fit(X_train, y_train)
+	# -------
+	#  from this we take n_components 100 to be right at the knee
+	pca1 = PCA(n_components=int(X_train.shape[0]*0.50), whiten=True).fit(X_train)
+	print('Explained variance percentage = %0.2f' % sum(pca1.explained_variance_ratio_))
+
+	pca2 = PCA(n_components=int(X_train.shape[0]*0.25), whiten=True).fit(X_train)
+	print('Explained variance percentage = %0.2f' % sum(pca2.explained_variance_ratio_))
+
+	pca3 = PCA(n_components=int(X_train.shape[0]*0.125), whiten=True).fit(X_train)
+	print('Explained variance percentage = %0.2f' % sum(pca3.explained_variance_ratio_))
+
+	pca4 = PCA(n_components=int(X_train.shape[0]*0.05), whiten=True).fit(X_train)
+	print('Explained variance percentage = %0.2f' % sum(pca4.explained_variance_ratio_))
+
+
+	# plot first two dimensions
+	from matplotlib import cm
+	X_embedded = nca.transform(X_train)
+
+	# basically a huge blob of outliers and inliers spread out in a v shape
+	visualize_data(X_embedded[:,:4], y_train)
 
 	# Use a scree plot to pick right dimensions
-	
+
 
 	X_train_k = kpca.transform(X_train)
 	X_val_k = kpca.transform(X_val)
