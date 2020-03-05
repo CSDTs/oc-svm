@@ -18,6 +18,7 @@ import os
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt  
 from mpl_toolkits.mplot3d import Axes3D  # for visualization
 import seaborn as sns  # for pretty plot
 sns.set_style("white")
@@ -212,16 +213,15 @@ if config.MODEL == 'SGD':
 
 if config.MODEL == "ONECLASS":
 	#see: https://hackernoon.com/one-class-classification-for-images-with-deep-features-be890c43455d
-	# ^ doesnt' work/requires without parameter searching
 	#see: https://sdsawtelle.github.io/blog/output/week9-anomaly-andrew-ng-machine-learning-with-python.htmlfrom sklearn.model_selection import StratifiedKFold
 	from sklearn.model_selection import StratifiedKFold
 	from sklearn.model_selection import GridSearchCV
 	from sklearn.metrics import f1_score, recall_score, make_scorer
 	from sklearn.preprocessing import StandardScaler
-	from sklearn.decomposition import PCA, KernelPCA
+	from sklearn.decomposition import PCA, KernelPCA, 
 	from sklearn.ensemble import IsolationForest
 	from sklearn.svm import OneClassSVM
-	from sklearn.neighbors import LocalOutlierFactor
+	from sklearn.neighbors import LocalOutlierFactor, NeighborhoodComponentsAnalysis
 
 	def load_data(data_set,
 				  base_path=config.BASE_CSV_PATH,
@@ -261,7 +261,16 @@ if config.MODEL == "ONECLASS":
 
 	print("[INFO] Loading train, validation and test into memory ...")
 	# get all of train, evaluation generator
-	X_train, y_train = load_data(data_set=config.TRAIN, subset=True)
+	# Note we use two class (insead of one class), for NCA
+	#  Some of the outliers got moved to validation so, the validation
+	# set is slightly baised. The test set should have only outliers not seen before
+	#
+	# So we do hyperparameter searching, still, on the training, validation set
+	# with validation hold out to double check. Then we'll look at test wiht the best one
+	# hopefullyit's all good.
+	X_train, y_train = load_data(data_set="training.two_class",
+							     use_hsv=False,
+								 subset=False)
 
 	X_val, y_val = load_data(data_set=config.VAL)
 
@@ -276,14 +285,22 @@ if config.MODEL == "ONECLASS":
 	X_test = ss.transform(X_test)
 	print("[INFO] ... scaled")
 
-	# PCA it (that's what they did)
-	print("[INFO] Applying PCA ...")	
-	pca = PCA(n_components=512, whiten=True)
-	pca = pca.fit(X_train)
-	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
+	# # PCA it (that's what they did)
+	# print("[INFO] Applying PCA ...")	
+	# pca = PCA(n_components=512, whiten=True)
+	# pca = pca.fit(X_train)
+	# print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
 
-	kpca = KernelPCA(n_jobs=-1, n_components=256) #X_train is 505?
-	kpca = kpca.fit(X_train)
+	# kpca = KernelPCA(n_jobs=-1, n_components=256) #X_train is 505?
+	# kpca = kpca.fit(X_train)
+
+	#  DO NCA instead
+	#   Note that this is y aware, so the parameter eval should 
+	nca = NeighborhoodComponentsAnalysis(n_components=512, verbose=10)
+	nca.fit(X_train, y_train)
+
+	# Use a scree plot to pick right dimensions
+	
 
 	X_train_k = kpca.transform(X_train)
 	X_val_k = kpca.transform(X_val)

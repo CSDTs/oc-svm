@@ -435,3 +435,35 @@ weighted avg       0.93      0.78      0.84       505
 
 
 using balanced_accuracy
+----
+3/5
+okay, these are some possible review items to add in if there's time/interest:
+ADD INs
+* Use ROC AUC score with a limit on the FPR such that the negative class is
+bounded to, say, 70% accuracy
+* Consider a dimensionality reduction that is class focused (LDA, Neighborhood component
+analysis, NCA)
+---
+Okay, I read the write up (really good I did), here's what I need to do:
+
+X * We're switching back to the ImageNet CNN. Uh, I use the Food 5k encoder but I should use, say, 
+AlexNet or somethign that was used in texture (AlexNet was)
+  X Use ResNet 50 model; we could use MobileNet but I want to move on to the next steps here.
+  X NOTE:  I'm starting to think it's better to figure out a jypter notebook setup for
+  reproducibilty here. Doing it as a cookiecutter data science project is great for
+  applications, things with a wider reach, but navigation across multiple files is pretty annoying.
+    X yeah my next project will be done in a Juypter notebook, so much easier
+      X quick break, need to send out some emails
+
+* I need to then do dimensinality reduction with NCA since we're using a LocalOUtlier thingie
+  X turnsout the twoclass.npy has a different set of dimension :(, oh i think it's .hsv? hard to say,
+  X Need to re-run everything, might as well use mobile net
+    X k let's try this, re-run
+
+**I need to make a scree plot and pick the "knee", there should be one since images themselves
+are highly redunant
+* Then I need to run my hyper parameter optizaiont, peep results,
+graph best on held out validation sample.
+
+* Then I need to run on test data, probably plot, generate results
+PR curve, ROC, etc.

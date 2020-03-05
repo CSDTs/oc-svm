@@ -3,7 +3,7 @@
 
 # import the necessary packages
 from sklearn.preprocessing import LabelEncoder
-from keras.applications import ResNet50
+from keras.applications import ResNet50, MobileNetV2
 from keras.applications import imagenet_utils
 from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import load_img
@@ -23,8 +23,11 @@ logger = logging.getLogger(__name__)
 # load the ResNet50 network and initialize the label encoder
 print("[INFO] loading network...")
 model = ResNet50(weights="imagenet", include_top=False)
+mobile_model = MobileNetV2(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
+mobilenet_flattened_size = 7 * 7 * 1280
 flattened_size = 7 * 7 * 2048
 hsv_flattened_size = 224 * 224 * 3
+
 le = None
 
 # loop over the data splits
@@ -64,9 +67,14 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	npPathHSV = Path(
 		os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.hsv.npy".format(split)])
+		)
+	mobilenetPath = Path(
+		os.path.sep.join([config.BASE_CSV_PATH,
+		"{}.mobile.npy".format(split)])
 		)		
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
+
 	if config.EXTRACT_FEATURES_TO_NPY:
 		if npPath.exists():
 			print(f"[INFO] ... deleting old data for {split}")
@@ -77,6 +85,18 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 				flattened_size + 1
 			)  # +1 for labels
 		)
+
+	if config.EXTRACT_MOBILENET_FEATURES:
+		if mobilenetPath.exists():
+			print(f"[INFO] ... deleting old MOBILENET data for {split}")
+			npPath.unlink()
+		feature_array = np.zeros(
+			(
+				len(labels),
+				mobilenet_flattened_size + 1
+			)  # +1 for labels
+		)
+
 	if config.EXTRACT_AS_HSV:
 		if npPathHSV.exists():
 			print(f"[INFO] ... deleting old hsv data for {split}")
@@ -106,6 +126,17 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 			# load the input image using the Keras helper utility
 			# while ensuring the image is resized to 224x224 pixels
 			image = load_img(imagePath, target_size=(224, 224))
+
+			if config.EXTRACT_MOBILENET_FEATURES:
+				image = img_to_array(image)
+				# preprocess the image by (1) expanding the dimensions and
+				# (2) subtracting the mean RGB pixel intensity from the
+				# ImageNet dataset
+				image = np.expand_dims(image, axis=0)
+				image = imagenet_utils.preprocess_input(image)
+				# add the image to the batch
+				batchImages.append(image)				
+
 			if config.EXTRACT_IMAGE_NET_FEATURES:
 				print("[INFO] ... extracting image net features")
 				image = img_to_array(image)
@@ -130,15 +161,21 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 		print("[INFO] generating features ... ")
 		batchImages = np.vstack(batchImages)
 
-		if config.EXTRACT_AS_HSV:
+		if config.EXTRACT_AS_HSV:			
 			features = batchImages.reshape((batchImages.shape[0], hsv_flattened_size))
 
 		if config.EXTRACT_IMAGE_NET_FEATURES:
 			features = model.predict(batchImages, batch_size=config.BATCH_SIZE)
 			features = features.reshape((features.shape[0], flattened_size))
+
+		if config.EXTRACT_MOBILENET_FEATURES:
+			features = mobile_model.predict(batchImages, batch_size=config.BATCH_SIZE)
+			features = features.reshape((features.shape[0], mobilenet_flattened_size))
+
 		print("[INFO] ... generated features")
 
-		if config.EXTRACT_FEATURES_TO_NPY or config.EXTRACT_AS_HSV:
+		if config.EXTRACT_FEATURES_TO_NPY or config.EXTRACT_AS_HSV\
+			or config.EXTRACT_MOBILENET_FEATURES:
 			# add vector to feature file for faster read
 			print("[INFO] extracting features to NPY ...")
 			labels_by_column =\
@@ -173,6 +210,14 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	# write out the full feature array
 	if config.EXTRACT_FEATURES_TO_NPY:
 		np.save(npPath, feature_array)
+
+	# write out the full feature array
+	if config.EXTRACT_IMAGE_NET_FEATURES:
+		np.save(npPath, feature_array)
+
+	# write out the full feature array
+	if config.EXTRACT_MOBILENET_FEATURES:
+		np.save(mobilenetPath, feature_array)
 
 	if config.EXTRACT_AS_HSV:
 		np.save(npPathHSV, feature_array)
