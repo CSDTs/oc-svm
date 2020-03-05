@@ -42,9 +42,9 @@ def visualize_data(X, y, pred_y=None):
 				   X[:, 1],
 				   X[:, 2], 
 				   c=y,  # color by outlier or inlier
-				   cmap="Set2_r",
-				   s=60,
-				   alpha=0.25,
+				   cmap="Paired",
+				   s=20,
+				   alpha=0.75,
 				   )
 
 	# Plot x's for the ground truth outliers
@@ -68,13 +68,10 @@ def visualize_data(X, y, pred_y=None):
 		ax.scatter(X[pred_y == -1, 0],
 				   X[pred_y  == -1, 1],
 				   zs=X[pred_y== -1, 2], 
-				   lw=2,
-				   edgecolors="r",
+				   lw=4,
+				   marker="o",
 				   facecolors=None,
 				   s=80)
-		#  labeled outliers with red circles are correct predictions
-		#  inliers with red circles are incorrect
-
 
 	# make simple, bare axis lines through space:
 	xAxisLine = ((min(X[:, 0]), max(X[:, 0])), (0, 0), (0,0))
@@ -89,19 +86,18 @@ def visualize_data(X, y, pred_y=None):
 	ax.set_ylabel("PC2")
 	ax.set_zlabel("PC3")
 	ax.set_title("Kente Cloth Inliers and Outliers")
-	plt.show()
 
-	# # seperately plot the pair wise histogram
-	# sns.pairplot(
-	# 	pd.DataFrame({
-	# 		"x":X[:,0],
-	# 		"y":X[:,1],
-	# 		"z":X[:,2], 
-	# 		"label":y}),
-	# 	hue="label",
-	# 	corner=True,
-	# 	diag_kind='kde'
-	# )  # todo: set same colors as prior plot
+	# seperately plot the pair wise histogram
+	sns.pairplot(
+		pd.DataFrame({
+			"x":X[:,0],
+			"y":X[:,1],
+			"z":X[:,2], 
+			"label":y}),
+		hue="label",
+		corner=True,
+		diag_kind='kde'
+	)  # todo: set same colors as prior plot
 
 
 def csv_feature_generator(inputPath, bs, numClasses, mode="train"):
@@ -284,7 +280,7 @@ if config.MODEL == "ONECLASS":
 	pca = pca.fit(X_train)
 	print('Explained variance percentage = %0.2f' % sum(pca.explained_variance_ratio_))
 
-	kpca = KernelPCA(n_jobs=-1, n_components=33, kernel='linear')
+	kpca = KernelPCA(n_jobs=-1, n_components=512)
 	kpca = kpca.fit(X_train)
 
 	X_train_k = kpca.transform(X_train)
@@ -298,10 +294,11 @@ if config.MODEL == "ONECLASS":
 
 	print("[INFO] Entering hyper parameter search for IsolationForest using validation data for F1 ...")
 	val_cuttoff = 100 # we use the rest of validate to test out of sample
-	# X_train_and_val = np.row_stack((X_train, X_val[:val_cuttoff,:]))
-	# y_train_and_val = np.hstack((y_train, y_val[:val_cuttoff]))
-	X_train_and_val = np.row_stack((X_train_k, X_val_k[:val_cuttoff,:]))
-	y_train_and_val = np.hstack((y_train, y_val[:val_cuttoff]))
+
+	X_train_and_val = np.row_stack((X_train_k, 
+								    X_val_k[:val_cuttoff,:]))
+	y_train_and_val = np.hstack((y_train, 
+								 y_val[:val_cuttoff])) # truncated at val_cuttoff
 
 
 	f1_scorer = make_scorer(f1_score)
@@ -325,10 +322,17 @@ if config.MODEL == "ONECLASS":
 	search.fit(X_train_and_val, y_train_and_val)
 
 	optimal_forest = search.best_estimator_
-	pred = optimal_forest.predict(X_train_and_val)
-	visualize_data(get_visualization_pipeline().fit_transform(X_train_and_val),
-			       y_train_and_val,
-				   pred)
+
+	#  Test out of sample...
+	X_val_test_with = X_train_and_val[val_cuttoff:]
+	X_val_plot_with = get_visualization_pipeline().fit_transform(
+		X_val_test_with)
+	y_val_test_with = y_train_and_val[val_cuttoff:]  # truncated AFTER val_cuttoff
+
+	preds = optimal_forest.predict(X_val_test_with)
+	visualize_data(X_val_test_with,
+			       y_val_test_with,
+				   preds)
 
 	#  plot fit results against 
 
