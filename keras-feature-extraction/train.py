@@ -31,75 +31,86 @@ def get_visualization_pipeline():
 		)
 	return pipeline
 
-def visualize_data(X, y, pred_y=None):
+def visualize_data(X, y, pred_y=None, title=""):
 	my_dpi=96
-	plt.figure(figsize=(480/my_dpi, 480/my_dpi), dpi=my_dpi)
 
-	fig = plt.figure()
-	ax = fig.add_subplot(111, projection='3d')
-	ax.set_zlabel("x_composite_3")
+	if X.shape[1] >= 3:
+		plt.figure(figsize=(480/my_dpi, 480/my_dpi), dpi=my_dpi)
 
-	sc =\
-		ax.scatter(X[:, 0],
-				   X[:, 1],
-				   X[:, 2], 
-				   c=y,  # color by outlier or inlier
-				   cmap="Paired",
-				   s=20,
-				   alpha=0.75,
-				   )
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		ax.set_zlabel("x_composite_3")
 
-	# Plot x's for the ground truth outliers
-	ax.scatter(X[y==-1, 0],
-			   X[y==-1, 1],
-			   zs=X[y==-1, 2], 
-           	   lw=2,
-			   s=60,
-			   marker="x",
-			   c="red")
+		sc =\
+			ax.scatter(X[:, 0],
+					X[:, 1],
+					X[:, 2], 
+					c=y,  # color by outlier or inlier
+					cmap="Paired",
+					s=20,
+					alpha=0.75,
+					)
 
-	labels = np.unique(y)
-	print("labels are: ", labels)
-	handles = [plt.Line2D([],[], marker="o", ls="", 
-						color=sc.cmap(sc.norm(yi))) for yi in labels]
-	plt.legend(handles, labels)
+		# Plot x's for the ground truth outliers
+		ax.scatter(X[y==-1, 0],
+				X[y==-1, 1],
+				zs=X[y==-1, 2], 
+				lw=2,
+				s=60,
+				marker="x",
+				c="red")
 
-	if pred_y is not None:
-		print("[INFO] ... plotting predicted inliers")
-		# Plot circles around the predicted outliers
-		ax.scatter(X[pred_y == -1, 0],
-				   X[pred_y  == -1, 1],
-				   zs=X[pred_y== -1, 2], 
-				   lw=4,
-				   marker="o",
-				   facecolors=None,
-				   s=80)
+		labels = np.unique(y)
+		print("labels are: ", labels)
+		handles = [plt.Line2D([],[], marker="o", ls="", 
+							color=sc.cmap(sc.norm(yi))) for yi in labels]
+		plt.legend(handles, labels)
 
-	# make simple, bare axis lines through space:
-	xAxisLine = ((min(X[:, 0]), max(X[:, 0])), (0, 0), (0,0))
-	ax.plot(xAxisLine[0], xAxisLine[1], xAxisLine[2], 'r')
-	yAxisLine = ((0, 0), (min(X[:, 1]), max(X[:, 1])), (0,0))
-	ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
-	zAxisLine = ((0, 0), (0,0), (min(X[:, 2]), max(X[:, 2])))
-	ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
-	
-	# label the axes
-	ax.set_xlabel("PC1")
-	ax.set_ylabel("PC2")
-	ax.set_zlabel("PC3")
-	ax.set_title("Kente Cloth Inliers and Outliers")
+		if pred_y is not None:
+			print("[INFO] ... plotting predicted inliers")
+			# Plot circles around the predicted outliers
+			ax.scatter(X[pred_y == -1, 0],
+					X[pred_y  == -1, 1],
+					zs=X[pred_y== -1, 2], 
+					lw=4,
+					marker="o",
+					facecolors=None,
+					s=80)
+
+		# make simple, bare axis lines through space:
+		xAxisLine = ((min(X[:, 0]), max(X[:, 0])), (0, 0), (0,0))
+		ax.plot(xAxisLine[0], xAxisLine[1], xAxisLine[2], 'r')
+		yAxisLine = ((0, 0), (min(X[:, 1]), max(X[:, 1])), (0,0))
+		ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
+		zAxisLine = ((0, 0), (0,0), (min(X[:, 2]), max(X[:, 2])))
+		ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
+		
+		# label the axes
+		ax.set_xlabel("PC1")
+		ax.set_ylabel("PC2")
+		ax.set_zlabel("PC3")
+		ax.set_title(f"Kente Cloth Inliers and Outliers\n{title}")
+
+		#  plot the figure
+		fig.savefig(title+'.png')
 
 	# seperately plot the pair wise histogram
-	sns.pairplot(
-		pd.DataFrame({
-			"x":X[:,0],
-			"y":X[:,1],
-			"z":X[:,2], 
-			"label":y}),
-		hue="label",
-		corner=True,
-		diag_kind='kde'
-	)  # todo: set same colors as prior plot
+	df =\
+		pd.DataFrame({"x":X[:,0],
+					  "y":X[:,1],
+					  "label":y})
+	if X.shape[1] >= 3:
+		df['z'] = X[:,2]
+
+	grid =\
+		sns.pairplot(
+			df,
+			hue="label",
+			corner=True,
+			diag_kind='kde'
+		)  # todo: set same colors as prior plot
+	grid.fig.suptitle(title)
+	grid.fig.savefig(title+'.pair'+".png")
 
 
 def csv_feature_generator(inputPath, bs, numClasses, mode="train"):
@@ -323,8 +334,8 @@ if config.MODEL == "ONECLASS":
 		 "copy_X": False}
 
 	fast_ica_args =\
-		{"n_jobs": -1,
-		 "algorithm": "parallel"}
+		{"algorithm": "parallel",
+		 "max_iter": 400}
 
 	the_reducers = []
 
@@ -339,6 +350,7 @@ if config.MODEL == "ONECLASS":
 				the_reducers.append(
 					(name, reducer(**args).fit(X_train, y_train))
 				)
+				pass
 			else:
 				the_reducers.append(
 					(name, reducer(**args).fit(X_train))
@@ -349,90 +361,35 @@ if config.MODEL == "ONECLASS":
 	ica_reducers =\
 		{"FastICA": FastICA}
 	for size in [2, 4]:
-		for name, reducer in ica_reducers:
+		for name, reducer in ica_reducers.items():
 			print(f"[INFO] ... reducing with {name} on size {size}")
 			args = {"n_components": size,
 					"random_state": 42}
+			args.update(fast_ica_args)
 			the_reducers.append(
 				(name, reducer(**args).fit(X_train))
 			)
 
-	# # PCA it (that's what they did)
-	# print("[INFO] Applying PCA ...")
-	# kpca = KernelPCA(n_jobs=-1, n_components=256) #X_train is 505?
-	# kpca = kpca.fit(X_train)
+	the_X_train_embeded = []
+	the_X_val_embedded = []
 
-	#  DO NCA instead
-	#   Note that this is y aware, so the parameter eval should 
+	# plot first two dimensions to get a sense of seperation
+	for name, reducer in the_reducers:
+		X_embedded = reducer.transform(X_train)
+		title_to_plot = name + "_" + str(reducer.n_components)
+		print("[INFO] title to plot is ", title_to_plot)
+		visualize_data(X_embedded[:,:4],
+					   y_train,
+					   title=title_to_plot)
+		the_X_train_embeded.append(X_embedded)
 
-	# thebelow is taking too long, maybe just switch to PCA
-	#----
-	nca1 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.5), verbose=10)
-	nca1.fit(X_train, y_train)
-
-	nca2 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.25), verbose=10)
-	nca2.fit(X_train, y_train)
-
-	nca3 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.10, verbose=10)
-	nca3.fit(X_train, y_train)
-
-	nca4 = NeighborhoodComponentsAnalysis(n_components=int(1280*7*7*0.05), verbose=10)
-	nca4.fit(X_train, y_train)
-
-	nca4 = NeighborhoodComponentsAnalysis(n_components=3, verbose=10)
-	nca4.fit(X_train, y_train)
-	# -------
-	#  from this we take n_components 100 to be right at the knee
-	pca1 = PCA(n_components=int(X_train.shape[0]*0.50), whiten=True).fit(X_train)
-	print('Explained variance percentage = %0.2f' % sum(pca1.explained_variance_ratio_))
-
-	pca2 = PCA(n_components=int(X_train.shape[0]*0.25), whiten=True).fit(X_train)
-	print('Explained variance percentage = %0.2f' % sum(pca2.explained_variance_ratio_))
-
-	pca3 = PCA(n_components=int(X_train.shape[0]*0.125), whiten=True).fit(X_train)
-	print('Explained variance percentage = %0.2f' % sum(pca3.explained_variance_ratio_))
-
-	pca4 = PCA(n_components=int(X_train.shape[0]*0.05), whiten=True).fit(X_train)
-	print('Explained variance percentage = %0.2f' % sum(pca4.explained_variance_ratio_))
+		the_X_val_embededed.append(
+			reducer.transform(X_val)
+		)
+		plt.close("close")
 
 
-	# plot first two dimensions
-	from matplotlib import cm
-	X_embedded = nca.transform(X_train)
-
-	# basically a huge blob of outliers and inliers spread out in a v shape
-	visualize_data(X_embedded[:,:4], y_train)
-
-	# Use a scree plot to pick right dimensions
-
-
-	X_train_k = kpca.transform(X_train)
-	X_val_k = kpca.transform(X_val)
-
-	X_train = pca.transform(X_train)
-	X_val = pca.transform(X_val)
-
-	#X_test = pca.transform(X_test)
-	print(f"[INFO] ... transformed train shape: {X_train.shape}, val shape: {X_val.shape}")
-
-	print("[INFO] Entering hyper parameter search for IsolationForest using validation data for F1 ...")
-	val_cuttoff = 100 # we use the rest of validate to test out of sample
-
-	X_train_and_val = np.row_stack((X_train_k, 
-								    X_val_k[:val_cuttoff,:]))
-	y_train_and_val = np.hstack((y_train, 
-								 y_val[:val_cuttoff])) # truncated at val_cuttoff
-
-	f1_scorer = make_scorer(f1_score)
-	# I think 'micro' implements recomendation of Aples to Apples in CV studies
-
-	contamination = {"contamination": list(np.linspace(0, 0.10, 2))+['auto']}
-	number_estimators = {"n_estimators": np.linspace(3, 20, num=3, dtype=int)}
-	max_features = {"max_features": np.linspace(0.1, 1.0, 3)}
-	kernel = {"kernel":["linear", "rbf", "poly", "sigmoid"]}
-	degree  = {"degree": np.linspace(2, 10, num=3, dtype=int)}
-	nu = {"nu": np.linspace(0.01, 1.0, 4)}
-	gamma = {"gamma":['auto', 1/512.0]}  #
+	print("[INFO] Entering hyper parameter search ...")
 	n_neighbors = {"n_neighbors": np.linspace(1, 40, num=10, dtype=int)}
 	metric = {"metric":\
 		['cityblock', 'cosine', 'euclidean',
@@ -445,20 +402,11 @@ if config.MODEL == "ONECLASS":
 		 'sqeuclidean', 'yule']}
 	novelty = {"novelty":[True]}
 
-	parameter_grid = {#**contamination,
-					  #**number_estimators,
-					  #**max_features,
-					  "n_jobs":[-1],
-					  ##**kernel,
-					  ##**degree,
-					  ##**nu,
-					  ##**gamma}
-					  ##"random_state":[42]}
-					  **n_neighbors,
+	parameter_grid = {**n_neighbors,
 					  **metric,
 					  **novelty}
  
-	folds = StratifiedKFold(n_splits=3).split(X_train_and_val, y_train_and_val)
+	folds = StratifiedKFold(n_splits=3).split(X_train, y_train)
 	search = GridSearchCV(
 		estimator=LocalOutlierFactor(),
 		param_grid=parameter_grid,
@@ -466,17 +414,13 @@ if config.MODEL == "ONECLASS":
 		cv=folds,
 		verbose=10,
 		n_jobs=-1)
-	search.fit(X_train_and_val, y_train_and_val)
-	#search.fit(X_train_k, y_train)
 
-	optimal_forest = search.best_estimator_
+	index = 0
+	search.fit(the_X_train_embeded[index], y_train)
+	optimal_knn_for_embedding = search.best_estimator_
 
-	X_val_test_with = X_train_and_val[val_cuttoff:]
-	y_val_test_with = y_train_and_val[val_cuttoff:]  # truncated AFTER val_cuttoff
-
-	preds = optimal_forest.predict(X_val_test_with)
-
-	print(classification_report(y_val_test_with, preds))
+	preds = optimal_forest.predict(the_X_train_embeded[index])
+	print(classification_report(y_val, preds))
 
 	#  Test out of sample...
 	X_val_plot_with = get_visualization_pipeline().fit_transform(
@@ -485,47 +429,7 @@ if config.MODEL == "ONECLASS":
 			       y_val_test_with,
 				   preds)
 
-	# ------
-	# special loop for OC svm
-	from sklearn.model_selection import ParameterGrid
-
-	for a_set_of_parameters in ParameterGrid(parameter_grid):
-		clf = OneClassSVM(**a_set_of_parameters)
-		clf.fit(X_train_k)
-		preds = optimal_forest.predict(X_val_test_with)
-		print(classification_report(y_val_test_with, preds))
-		print(a_set_of_parameters)
-		print("\n")
-	
-
-	# ------
-
-
-	#  plot fit results against 
-
-	print("[INFO] training OC-SVM, Isolation Forest ...")
-	# Train classifier and obtain predictions for OC-SVM
-	oc_svm_clf = svm.OneClassSVM(gamma=0.001, kernel='rbf', nu=0.08)  # Obtained using grid search
-	if_clf = IsolationForest(contamination=0.08, max_features=1.0, max_samples=1.0, n_estimators=40)  # Obtained using grid search
-	print("[INFO] ... trained")
-
-	print("[INFO] fitting OC-SVM, Isolation Forest ...")
-	oc_svm_clf.fit(X_train)
-	if_clf.fit(X_train)
-	print("[INFO] ... fitted")
-
-	print("[INFO] predicting on validation data ...")
-	oc_svm_preds = oc_svm_clf.predict(X_val)
-	if_preds = if_clf.predict(X_val)
-	print(f"[INFO] ... predicted oc_svm shape: {oc_svm_preds.shape}")
-
-	print("[INFO] producing classification report ...")
-	# prediction, with classification report
-	print("One Class SVM...")
-	print(f"[INFO] class prediction counts {np.unique(oc_svm_preds, return_counts=True)}")
-	print(classification_report(y_val, oc_svm_preds,
-		target_names=['fake', 'real']))
-	print("ROC AUC Score: ", roc_auc_score(y_val, oc_svm_preds))
+	# Generate classification report for out of sample evaluation data
 
 	print("Isolation Forest ...")
 	print(f"[INFO] class prediction counts {np.unique(if_preds, return_counts=True)}")	
