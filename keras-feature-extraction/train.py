@@ -227,7 +227,7 @@ if config.MODEL == "ONECLASS":
 	#see: https://sdsawtelle.github.io/blog/output/week9-anomaly-andrew-ng-machine-learning-with-python.htmlfrom sklearn.model_selection import StratifiedKFold
 	from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 	from sklearn.model_selection import GridSearchCV
-	from sklearn.metrics import f1_score, recall_score, make_scorer
+	from sklearn.metrics import f1_score, recall_score, average_precision_score
 	from sklearn.preprocessing import StandardScaler
 	from sklearn.decomposition import PCA, KernelPCA
 	from sklearn.ensemble import IsolationForest
@@ -367,7 +367,7 @@ if config.MODEL == "ONECLASS":
 					"random_state": 42}
 			args.update(fast_ica_args)
 			the_reducers.append(
-				(name, reducer(**args).fit(X_train))
+				(name, reducer(**args).fit(X_train))  # we could do fit_transform
 			)
 
 	the_X_train_embeded = []
@@ -383,44 +383,54 @@ if config.MODEL == "ONECLASS":
 					   title=title_to_plot)
 		the_X_train_embeded.append(X_embedded)
 
-		the_X_val_embededed.append(
+		the_X_val_embedded.append(
 			reducer.transform(X_val)
 		)
-		plt.close("close")
-
+		plt.close("close")  # to prevent too many figs at once
 
 	print("[INFO] Entering hyper parameter search ...")
-	n_neighbors = {"n_neighbors": np.linspace(1, 40, num=10, dtype=int)}
+	n_neighbors = {"n_neighbors": [1,5,11]}
 	metric = {"metric":\
 		['cityblock', 'cosine', 'euclidean',
 		 'l1', 'l2', 'manhattan'] +\
-		['braycurtis', 'canberra', 'chebyshev',
-		 'correlation', 'dice', 'hamming', 
-		 'jaccard', 'kulsinski', 'mahalanobis',
-		 'minkowski', 'rogerstanimoto', 'russellrao',
-		 'seuclidean', 'sokalmichener', 'sokalsneath',
-		 'sqeuclidean', 'yule']}
+		['correlation', 'seuclidean', 'sqeuclidean']}
 	novelty = {"novelty":[True]}
 
 	parameter_grid = {**n_neighbors,
 					  **metric,
 					  **novelty}
+	
  
-	folds = StratifiedKFold(n_splits=3).split(X_train, y_train)
-	search = GridSearchCV(
-		estimator=LocalOutlierFactor(),
-		param_grid=parameter_grid,
-		scoring='balanced_accuracy',
-		cv=folds,
-		verbose=10,
-		n_jobs=-1)
+	best_clf_with_report2 = []
+	for X_embedded, X_val_embedded, reducer in \
+		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
 
-	index = 0
-	search.fit(the_X_train_embeded[index], y_train)
-	optimal_knn_for_embedding = search.best_estimator_
+		folds = StratifiedKFold(n_splits=3).split(X_train, y_train)
+		search = GridSearchCV(
+			estimator=LocalOutlierFactor(),
+			param_grid=parameter_grid,
+			scoring=('f1_macro'),
+			cv=folds,
+			verbose=5,
+			n_jobs=-1,
+			)
 
-	preds = optimal_forest.predict(the_X_train_embeded[index])
-	print(classification_report(y_val, preds))
+		search.fit(X_embedded,
+				   y_train)
+		optimal_knn_for_embedding = search.best_estimator_
+
+		preds = optimal_knn_for_embedding.predict(X_val_embedded)
+		avg_precision = average_precision_score(y_val, preds)
+		best_clf_with_report2.append(
+			(str(reducer),
+			 avg_precision,
+			 classification_report(y_val, preds),
+			 optimal_knn_for_embedding)
+		)
+
+		print(str(optimal_knn_for_embedding), str(reducer))
+		print(best_clf_with_report[-1][-2])
+		print("avg precision", avg_precision)
 
 	#  Test out of sample...
 	X_val_plot_with = get_visualization_pipeline().fit_transform(

@@ -535,3 +535,14 @@ Out[21]: [1365, 682, 341, 136]
 ^ dimensions
 ----
 So I think what i'll do is run the above with 
+
+---
+3/6
+so I'm all the way to where i need to test out of sample, however I was 
+thinking about the class imbalance and very poor F1 score on fake kente. 
+I tihnk waht I do when I have time this weekend is generate a new set of data
+that is balanced between fake and authentic kente, recognizing that the fake
+kente come from a restricted sample 
+
+Then re-run. This hsould give me more balanced results. From there I can simply
+write up the rest of the paper.
