@@ -504,15 +504,17 @@ CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL
 are highly redunant
 I can also plot up to the first three dimension
   First three dimensions show concetration 
+  ** So I think it's worth trying a collection of component analyses and
+  taking the best one in the validation data set.
+
 
 * Then I need to run my hyper parameter optizaiont, peep results,
 graph best on held out validation sample.
 
-
 * Then I need to run on test data, probably plot, generate results
 PR curve, ROC, etc.
 ----
-In [21]:     pca1 = PCA(n_components=int(X_train.shape[1]*0.50), whiten=True).fit(X_train) 
+In [21]:     pca1 = PCA(n_components=int(X_train.shape[0]*0.50), whiten=True).fit(X_train) 
             print('Explained variance percentage = %0.2f' % sum(pca1.explained_variance_ratio_)) 
 Explained variance percentage = 0.85
 
@@ -529,5 +531,7 @@ In [16]:     print('Explained variance percentage = %0.2f' % sum(pca4.explained_
 Explained variance percentage = 0.38
 
 In [21]: [int(X_train.shape[0]*prop) for prop in [0.5, 0.25, 0.125, 0.05]]                                                                           
-Out[21]: [1365, 682, 341, 136]
+Out[21]: [1365, 682, 341, 136]  
 ^ dimensions
+----
+So I think what i'll do is run the above with 

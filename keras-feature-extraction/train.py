@@ -15,7 +15,7 @@ import pickle
 import os
 
 # Packages for gridsearch, examining results
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, FastICA
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import matplotlib.pyplot as plt  
@@ -282,20 +282,21 @@ if config.MODEL == "ONECLASS":
 	print("[INFO] ... loaded into memory")
 
 	# ... X_train was designed to be one class only because I thought I was going to do
-	# an SVM approach but that turned out to be to big of an assumption.
-	# so, now need to mix X_val and X_train to get a balance of counterfiet and authentic examples
+	# an SVM approach but that turned out to be too big of an assumption.
+	# so, now need to mix X_val and X_train to get a balance of counterfeit and authentic examples
 
 	X_train_and_val = np.row_stack((X_train, X_val))
 	y_train_and_val = np.hstack((y_train, y_val))
 	stratified_splitter =\
 		StratifiedShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
 	new_train_index, new_test_index =\
-		list(stratified_splitter.split(X_train_and_val, y_train_and_val))[0]
-	X_train = X_train_and_val[new_train_index]
-	y_train = y_train_and_val[new_train_index]
-
-	X_val = X_train_and_val[new_test_index]
-	y_val = y_train_and_val[new_test_index]
+		next(stratified_splitter.split(X_train_and_val, y_train_and_val))
+	X_train, y_train =\
+		X_train_and_val[new_train_index],
+		y_train_and_val[new_train_index]
+	X_val, y_val =\
+		X_train_and_val[new_test_index],
+		y_train_and_val[new_test_index]
 
 	print("[INFO] Applying standard scaling ...")
 	ss = StandardScaler()
@@ -304,6 +305,57 @@ if config.MODEL == "ONECLASS":
 	X_val = ss.transform(X_val)
 	X_test = ss.transform(X_test)
 	print("[INFO] ... scaled")
+
+	#  Here we apply a variety of dimensionality reduction techniques,
+	# to be evaluated on held out validation data and within parameter search
+	reduction_sizes =\
+		{"reduction_125": int(X_train.shape[0]*0.125),}
+		 "reduction_50": int(X_train.shape[0]*0.5), 
+		 "reduction_25": int(X_train.shape[0]*0.25)}
+	dimensionality_reducers =\
+		{"PCA": PCA,
+		 "KPCA": KernelPCA,
+		 "NCA": NeighborhoodComponentsAnalysis}
+
+	kpca_args =\
+		{"n_jobs": -1,
+		 "kernel": "rbf",
+		 "copy_X": False}
+
+	fast_ica_args =\
+		{"n_jobs": -1,
+		 "algorithm": "parallel"}
+
+	the_reducers = []
+
+	for size in reduction_sizes.values():
+		for name, reducer in dimensionality_reducers.items():
+			print(f"[INFO] reducing with {name} on size {size} ...")
+			args = {"n_components": size,
+					"random_state": 42}
+			if name in ["KPCA"]:
+				args.update(kpca_args)
+			if name in ["NCA"]:
+				the_reducers.append(
+					(name, reducer(**args).fit(X_train, y_train))
+				)
+			else:
+				the_reducers.append(
+					(name, reducer(**args).fit(X_train))
+				)
+			print(f"[INFO] ... finished with instance of {name}")
+
+	#  ... and also do fast ICA with 4 and 2 sources
+	ica_reducers =\
+		{"FastICA": FastICA}
+	for size in [2, 4]:
+		for name, reducer in ica_reducers:
+			print(f"[INFO] ... reducing with {name} on size {size}")
+			args = {"n_components": size,
+					"random_state": 42}
+			the_reducers.append(
+				(name, reducer(**args).fit(X_train))
+			)
 
 	# # PCA it (that's what they did)
 	# print("[INFO] Applying PCA ...")
