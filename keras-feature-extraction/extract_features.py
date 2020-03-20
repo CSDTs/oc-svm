@@ -71,7 +71,7 @@ for split in (config.TRAIN, config.TEST, config.VAL):
 	mobilenetPath = Path(
 		os.path.sep.join([config.BASE_CSV_PATH,
 		"{}.mobile.npy".format(split)])
-		)		
+		)
 	if config.EXTRACT_FEATURES_TO_CSV:
 		csv = open(csvPath, "w")
 

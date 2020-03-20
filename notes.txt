@@ -546,3 +546,58 @@ kente come from a restricted sample
 
 Then re-run. This hsould give me more balanced results. From there I can simply
 write up the rest of the paper.
+--
+3/7
+going to generate a new set of samples, nearly balanced.
+
+--
+3/10
+finally got the balanced dataset out (see kente-authenication)
+
+Looking at the last component of PCA, it's way above 1
+not sure how besta to interpt the other dimensionality reduction
+techniques and let's jsut move this along
+-----
+yay, got it,
+
+In [114]: ^Ipreds = best_classifier.predict(X_test_embedded) 
+     ...: ^Iavg_precision = average_precision_score(y_test, preds) 
+     ...: ^Ireport = classification_report(y_test, preds) 
+     ...: ^Iprint(report)                                                                                                                            
+              precision    recall  f1-score   support
+
+        -1.0       0.90      0.94      0.92       330
+         1.0       0.93      0.88      0.90       284
+
+    accuracy                           0.91       614
+   macro avg       0.92      0.91      0.91       614
+weighted avg       0.91      0.91      0.91       614
+
+
+on held out test values.
+We are using
+
+('NCA',
+ NeighborhoodComponentsAnalysis(callback=None, init='auto', max_iter=50,
+                                n_components=342, random_state=42, tol=1e-05,
+                                verbose=0, warm_start=False))
+
+(oddly enough that NCA is a hair better; PCA is pretty good too)
+---
+I guess I'll do PCA too although I'm not sure if I'm supposed to or not? I'm not
+changing an algorithm parameter, just chosing a completely different transform
+--
+
+With PCA we get:
+
+              precision    recall  f1-score   support
+
+        -1.0       0.89      0.94      0.92       330
+         1.0       0.93      0.87      0.90       284
+
+    accuracy                           0.91       614
+   macro avg       0.91      0.90      0.91       614
+weighted avg       0.91      0.91      0.91       614
+
+---
+I guess I'll go with PCA since it's more normal.

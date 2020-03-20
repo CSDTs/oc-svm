@@ -13,7 +13,7 @@ BASE_PATH = "../../kente-cloth-authentication/data/processed"
 # define the names of the training, testing, and validation
 # directories
 # TRAIN = "training"
-TRAIN = "oc_training"
+TRAIN = "training"
 TEST = "evaluation"
 VAL = "validation"
 

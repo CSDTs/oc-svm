@@ -4,9 +4,9 @@
 # import the necessary packages
 from functools import partial
 from keras.models import Sequential
-from keras.layers.core import Dense
-from keras.optimizers import SGD
-from keras.utils import to_categorical
+#from keras.layers.core import Dense
+#from keras.optimizers import SGD
+#from keras.utils import to_categorical
 from sklearn.metrics import classification_report, roc_auc_score
 from pyimagesearch import config
 import pandas as pd
@@ -231,14 +231,15 @@ if config.MODEL == "ONECLASS":
 	from sklearn.preprocessing import StandardScaler
 	from sklearn.decomposition import PCA, KernelPCA
 	from sklearn.ensemble import IsolationForest
+	from sklearn.linear_model import LogisticRegressionCV
 	from sklearn.svm import OneClassSVM
 	from sklearn.neighbors import LocalOutlierFactor, NeighborhoodComponentsAnalysis
 
 	def load_data(data_set,
 				  base_path=config.BASE_CSV_PATH,
 				  remap_y_values={0:-1},
-				  use_hsv=True,
-				  subset=True):
+				  use_hsv=False,
+				  subset=False):
 		hsv = ''
 		if use_hsv:
 			hsv = 'hsv.'
@@ -279,7 +280,7 @@ if config.MODEL == "ONECLASS":
 	# So we do hyperparameter searching, still, on the training, validation set
 	# with validation hold out to double check. Then we'll look at test wiht the best one
 	# hopefullyit's all good.
-	X_train, y_train = load_data(data_set="oc_training.mobile",
+	X_train, y_train = load_data(data_set="training.mobile",
 							     use_hsv=False,
 								 subset=False)  # note one class, need to steal from val
 
@@ -292,23 +293,6 @@ if config.MODEL == "ONECLASS":
 							   subset=False)
 	print("[INFO] ... loaded into memory")
 
-	# ... X_train was designed to be one class only because I thought I was going to do
-	# an SVM approach but that turned out to be too big of an assumption.
-	# so, now need to mix X_val and X_train to get a balance of counterfeit and authentic examples
-
-	X_train_and_val = np.row_stack((X_train, X_val))
-	y_train_and_val = np.hstack((y_train, y_val))
-	stratified_splitter =\
-		StratifiedShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
-	new_train_index, new_test_index =\
-		next(stratified_splitter.split(X_train_and_val, y_train_and_val))
-	X_train, y_train =\
-		X_train_and_val[new_train_index],
-		y_train_and_val[new_train_index]
-	X_val, y_val =\
-		X_train_and_val[new_test_index],
-		y_train_and_val[new_test_index]
-
 	print("[INFO] Applying standard scaling ...")
 	ss = StandardScaler()
 	ss.fit(X_train)
@@ -320,9 +304,9 @@ if config.MODEL == "ONECLASS":
 	#  Here we apply a variety of dimensionality reduction techniques,
 	# to be evaluated on held out validation data and within parameter search
 	reduction_sizes =\
-		{"reduction_125": int(X_train.shape[0]*0.125),}
-		 "reduction_50": int(X_train.shape[0]*0.5), 
-		 "reduction_25": int(X_train.shape[0]*0.25)}
+		{#"reduction_125": int(X_train.shape[0]*0.125),}
+		 "reduction_50": int(X_train.shape[0]*0.5)}
+		 #"reduction_25": int(X_train.shape[0]*0.25)}
 	dimensionality_reducers =\
 		{"PCA": PCA,
 		 "KPCA": KernelPCA,
@@ -388,7 +372,7 @@ if config.MODEL == "ONECLASS":
 		)
 		plt.close("close")  # to prevent too many figs at once
 
-	print("[INFO] Entering hyper parameter search ...")
+	print("[INFO] Entering LocalOutlierFactor hyper parameter search ...")
 	n_neighbors = {"n_neighbors": [1,5,11]}
 	metric = {"metric":\
 		['cityblock', 'cosine', 'euclidean',
@@ -399,9 +383,8 @@ if config.MODEL == "ONECLASS":
 	parameter_grid = {**n_neighbors,
 					  **metric,
 					  **novelty}
-	
  
-	best_clf_with_report2 = []
+	best_clf_with_report = []
 	for X_embedded, X_val_embedded, reducer in \
 		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
 
@@ -421,29 +404,122 @@ if config.MODEL == "ONECLASS":
 
 		preds = optimal_knn_for_embedding.predict(X_val_embedded)
 		avg_precision = average_precision_score(y_val, preds)
-		best_clf_with_report2.append(
+		report = classification_report(y_val, preds, output_dict=True)
+		best_clf_with_report.append(
 			(str(reducer),
 			 avg_precision,
-			 classification_report(y_val, preds),
+			 report,
 			 optimal_knn_for_embedding)
 		)
 
 		print(str(optimal_knn_for_embedding), str(reducer))
-		print(best_clf_with_report[-1][-2])
+		print(f"Outlier Recall: {report['-1.0']['recall']:.2f}, Outlier Precision: {report['-1.0']['precision']:.2f}")
 		print("avg precision", avg_precision)
 
-	#  Test out of sample...
-	X_val_plot_with = get_visualization_pipeline().fit_transform(
-		X_val_test_with)
-	visualize_data(X_val_test_with,
-			       y_val_test_with,
-				   preds)
+	# ... try isolation forests
+	print("[INFO] Entering IsoForest hyper parameter search ...")
+	n_estimators = {"n_estimators": [50,200,11]}
+	n_jobs = {"n_jobs":[-1]}
 
-	# Generate classification report for out of sample evaluation data
+	parameter_grid = {**n_estimators,
+					  **n_jobs}
+ 
+	for X_embedded, X_val_embedded, reducer in \
+		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
 
-	print("Isolation Forest ...")
-	print(f"[INFO] class prediction counts {np.unique(if_preds, return_counts=True)}")	
-	print(classification_report(y_val, if_preds,
-		target_names=['fake', 'real']))
-	print("ROC AUC Score: ", roc_auc_score(y_val, if_preds))
-	print("[INFO] done!")
+		folds = StratifiedKFold(n_splits=3).split(X_train, y_train)
+		search = GridSearchCV(
+			estimator=IsolationForest(),
+			param_grid=parameter_grid,
+			scoring=('f1_macro'),
+			cv=folds,
+			verbose=5,
+			n_jobs=-1,
+			)
+
+		search.fit(X_embedded,
+				   y_train)
+		optimal_forest_for_embedding = search.best_estimator_
+
+		preds = optimal_forest_for_embedding.predict(X_val_embedded)
+		avg_precision = average_precision_score(y_val, preds)
+		report = classification_report(y_val, preds, output_dict=True)
+		best_clf_with_report.append(
+			(str(reducer),
+			 avg_precision,
+			 report,
+			 optimal_forest_for_embedding)
+		)
+
+		print(str(optimal_forest_for_embedding), str(reducer))
+		print(f"Outlier Recall: {report['-1.0']['recall']:.2f}, Outlier Precision: {report['-1.0']['precision']:.2f}")
+		print("avg precision", avg_precision)
+
+	#  ... ^ doesn't do much at all, stick with LOF
+
+	# ... finally try with a simple linear regressor
+	for X_embedded, X_val_embedded, reducer in \
+		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
+		regressor = LogisticRegressionCV(n_jobs=-1,
+										 cv=3,
+										 scoring='f1_macro',
+										 random_state=42)
+		regressor.fit(X_embedded,
+					  y_train)
+		preds = regressor.predict(X_val_embedded)
+		avg_precision = average_precision_score(y_val, preds)
+		report = classification_report(y_val, preds, output_dict=True)
+		best_clf_with_report.append(
+			(str(reducer),
+			 avg_precision,
+			 report,
+			 regressor)
+		)
+
+		print(str(regressor), str(reducer))
+		print(f"Outlier Recall: {report['-1.0']['recall']:.2f}, Outlier Precision: {report['-1.0']['precision']:.2f}")
+		print("avg precision", avg_precision)
+	# ... which is clearly the better overal model here
+	
+	#  ... finally we test out of sample to get reportable statistics
+	# on the evaluation dataset
+	best_classifier_index = -3
+	best_reducer_index = 2
+	best_reducer_index = 0	
+	print("[INFO] ... Training best classifer on validation, training")
+	best_classifier =\
+		LogisticRegressionCV(
+			**best_clf_with_report[best_classifier_index][-1].get_params())
+	best_classifier.fit(
+		X=np.vstack((the_X_train_embeded[best_reducer_index],
+					 the_X_val_embedded[best_reducer_index])),
+		y=np.hstack((y_train, y_val))
+	)
+	print("[INFO] ... Test trained classifer on hold out evaluation sample")
+	X_test_embedded = the_reducers[best_reducer_index][1].transform(X_test)
+	preds = best_classifier.predict(X_test_embedded)
+	avg_precision = average_precision_score(y_test, preds)
+	report = classification_report(y_test, preds)
+	print(report)
+	# ... this is where we drop our microphone
+
+
+
+	#   on PCA, which has nearly similar results as NCA, we get
+	best_classifier_index = -3
+	best_reducer_index = 0	
+	print("[INFO] ... Training best classifer on validation, training")
+	best_classifier =\
+		LogisticRegressionCV(
+			**best_clf_with_report[best_classifier_index][-1].get_params())
+	best_classifier.fit(
+		X=np.vstack((the_X_train_embeded[best_reducer_index],
+					 the_X_val_embedded[best_reducer_index])),
+		y=np.hstack((y_train, y_val))
+	)
+	print("[INFO] ... Test trained classifer on hold out evaluation sample")
+	X_test_embedded = the_reducers[best_reducer_index][1].transform(X_test)
+	preds = best_classifier.predict(X_test_embedded)
+	avg_precision = average_precision_score(y_test, preds)
+	report = classification_report(y_test, preds)
+	print(report)	
