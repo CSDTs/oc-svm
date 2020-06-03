@@ -19,6 +19,7 @@ import os
 import pdb
 
 logger = logging.getLogger(__name__)
+random.seed(1)
 
 # load the ResNet50 network and initialize the label encoder
 print("[INFO] loading network...")
