@@ -18,7 +18,7 @@ import os
 from sklearn.decomposition import PCA, FastICA
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-import matplotlib.pyplot as plt  
+import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # for visualization
 import seaborn as sns  # for pretty plot
 sns.set_style("white")
@@ -44,7 +44,7 @@ def visualize_data(X, y, pred_y=None, title=""):
 		sc =\
 			ax.scatter(X[:, 0],
 					X[:, 1],
-					X[:, 2], 
+					X[:, 2],
 					c=y,  # color by outlier or inlier
 					cmap="Paired",
 					s=20,
@@ -54,7 +54,7 @@ def visualize_data(X, y, pred_y=None, title=""):
 		# Plot x's for the ground truth outliers
 		ax.scatter(X[y==-1, 0],
 				X[y==-1, 1],
-				zs=X[y==-1, 2], 
+				zs=X[y==-1, 2],
 				lw=2,
 				s=60,
 				marker="x",
@@ -62,7 +62,7 @@ def visualize_data(X, y, pred_y=None, title=""):
 
 		labels = np.unique(y)
 		print("labels are: ", labels)
-		handles = [plt.Line2D([],[], marker="o", ls="", 
+		handles = [plt.Line2D([],[], marker="o", ls="",
 							color=sc.cmap(sc.norm(yi))) for yi in labels]
 		plt.legend(handles, labels)
 
@@ -71,7 +71,7 @@ def visualize_data(X, y, pred_y=None, title=""):
 			# Plot circles around the predicted outliers
 			ax.scatter(X[pred_y == -1, 0],
 					X[pred_y  == -1, 1],
-					zs=X[pred_y== -1, 2], 
+					zs=X[pred_y== -1, 2],
 					lw=4,
 					marker="o",
 					facecolors=None,
@@ -84,7 +84,7 @@ def visualize_data(X, y, pred_y=None, title=""):
 		ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
 		zAxisLine = ((0, 0), (0,0), (min(X[:, 2]), max(X[:, 2])))
 		ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
-		
+
 		# label the axes
 		ax.set_xlabel("PC1")
 		ax.set_ylabel("PC2")
@@ -299,6 +299,7 @@ if config.MODEL == "ONECLASS":
 	X_train = ss.transform(X_train)
 	X_val = ss.transform(X_val)
 	X_test = ss.transform(X_test)
+	pickle.dump(ss, open('standardscaler.pkl','wb'))
 	print("[INFO] ... scaled")
 
 	#  Here we apply a variety of dimensionality reduction techniques,
@@ -383,7 +384,7 @@ if config.MODEL == "ONECLASS":
 	parameter_grid = {**n_neighbors,
 					  **metric,
 					  **novelty}
- 
+
 	best_clf_with_report = []
 	for X_embedded, X_val_embedded, reducer in \
 		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
@@ -423,7 +424,7 @@ if config.MODEL == "ONECLASS":
 
 	parameter_grid = {**n_estimators,
 					  **n_jobs}
- 
+
 	for X_embedded, X_val_embedded, reducer in \
 		zip(the_X_train_embeded, the_X_val_embedded, the_reducers):
 
@@ -480,12 +481,12 @@ if config.MODEL == "ONECLASS":
 		print(f"Outlier Recall: {report['-1.0']['recall']:.2f}, Outlier Precision: {report['-1.0']['precision']:.2f}")
 		print("avg precision", avg_precision)
 	# ... which is clearly the better overal model here
-	
+
 	#  ... finally we test out of sample to get reportable statistics
 	# on the evaluation dataset
 	best_classifier_index = -3
 	best_reducer_index = 2
-	best_reducer_index = 0	
+	best_reducer_index = 0
 	print("[INFO] ... Training best classifer on validation, training")
 	best_classifier =\
 		LogisticRegressionCV(
@@ -507,7 +508,7 @@ if config.MODEL == "ONECLASS":
 
 	#   on PCA, which has nearly similar results as NCA, we get
 	best_classifier_index = -3
-	best_reducer_index = 0	
+	best_reducer_index = 0
 	print("[INFO] ... Training best classifer on validation, training")
 	best_classifier =\
 		LogisticRegressionCV(
@@ -522,4 +523,7 @@ if config.MODEL == "ONECLASS":
 	preds = best_classifier.predict(X_test_embedded)
 	avg_precision = average_precision_score(y_test, preds)
 	report = classification_report(y_test, preds)
-	print(report)	
+	print(report)
+
+pickle.dump(best_classifier, open('model.pkl','wb'))
+pickle.dump(the_reducers[best_reducer_index][1], open('reducer.pkl','wb'))
