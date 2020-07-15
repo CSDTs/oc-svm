@@ -23,12 +23,9 @@ LABEL_INDEX = 0
 # CLASSES = ["non_food", "food"]
 CLASSES = ["fake", "real"]
 
-EXTRACT_FEATURES_TO_NPY=True
-EXTRACT_FEATURES_TO_CSV=False
+FEATURE_FILE_FORMAT = "npy" #csv or npy
 
-EXTRACT_AS_HSV=False
-EXTRACT_IMAGE_NET_FEATURES=False
-EXTRACT_MOBILENET_FEATURES=True
+FEATURE_PROCESSOR = "MobileNet" #ImageNet, MobileNet or HSV
 
 # set the batch size
 BATCH_SIZE = 32
@@ -39,7 +36,6 @@ LE_PATH = os.path.sep.join(["output", "le.kente.cpickle"])
 BASE_CSV_PATH = "output"
 
 # Set the model to use
-MODEL = "ONECLASS"
-#MODEL = "SGD"
+MODEL = "ONECLASS" #ONECLASS or SGD
 
 PROPORTION_TRAIN_CASES = 0.2
